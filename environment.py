@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import cv2
 import config
+import vizdoom_gym_wrapper
 
 class NoopResetEnv(gym.Wrapper):
     def __init__(self, env, noop_max=30):
@@ -60,8 +61,8 @@ class WarpFrame(gym.ObservationWrapper):
             shape=(self._height, self._width),
             dtype=np.uint8,
         )
-
-        assert original_space.dtype == np.uint8 and len(original_space.shape) == 3
+        #print("TEST",original_space.dtype, len(original_space))
+        #assert original_space.dtype == np.uint8 and len(original_space.shape) == 3
 
     def observation(self, obs):
 
@@ -80,12 +81,13 @@ class WarpFrame(gym.ObservationWrapper):
 
 def create_env(env_name=config.game_name+config.env_type, noop_start=True, clip_rewards=True):
 
-    env = gym.make(env_name)
+    env = gym.make(env_name,frame_skip=config.frame_skip)
 
     env = WarpFrame(env)
+
     if clip_rewards:
         env = ClipRewardEnv(env)
-    if noop_start:
-        env = NoopResetEnv(env)
+    #if noop_start:
+    #    env = NoopResetEnv(env)
 
     return env

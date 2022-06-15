@@ -19,6 +19,7 @@ from model import Network
 from environment import create_env
 from priority_tree import create_ptree, ptree_sample, ptree_update
 import config
+from vizdoom import gym_wrapper
 
 DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
 
@@ -68,9 +69,9 @@ class ReplayBuffer:
         self.rew_buf = [None] * self.num_blocks
         self.gamma_buf = [None] * self.num_blocks
         self.seq_pre_block_buf = np.zeros(self.num_blocks, dtype=np.uint8)
-        self.learning_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.long)
-        self.burn_in_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.long)
-        self.forward_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.long)
+        self.learning_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
+        self.burn_in_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
+        self.forward_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
 
     def __len__(self):
         return np.sum(self.learning_steps).item()
@@ -398,7 +399,7 @@ class LocalBuffer:
     
     def reset(self, init_obs: np.ndarray):
         self.obs_buffer = [init_obs for _ in range(self.frame_stack)]
-        self.last_action_buffer = [np.zeros(self.action_dim, dtype=np.bool)]
+        self.last_action_buffer = [np.zeros(self.action_dim, dtype=bool)]
         self.hidden_buffer = [np.zeros((2, self.hidden_dim), dtype=DEFAULT_NP_FLOAT)]
         self.action_buffer = []
         self.reward_buffer = []
@@ -413,7 +414,7 @@ class LocalBuffer:
         self.action_buffer.append(action)
         self.reward_buffer.append(reward)
         self.obs_buffer.append(next_obs)
-        last_action = np.zeros(self.action_dim, dtype=np.bool)
+        last_action = np.zeros(self.action_dim, dtype=bool)
         last_action[action] = 1
         self.last_action_buffer.append(last_action)
         self.qval_buffer.append(q_value)
