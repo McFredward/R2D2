@@ -86,7 +86,12 @@ def test_one_case(args):
     return sum_reward
 
 def play(rounds=10,checkpoint=-1): #-1 for the last snapshot
-    env = create_env(noop_start=False, clip_rewards=False)
+    env = create_env(noop_start=False, clip_rewards=False,testing=True)
+    #load game again to change options
+    #env.game.set_window_visible(False)
+    #env.game.set_mode(vzd.Mode.ASYNC_PLAYER)
+    #env.frame_skip = 1
+    #env.game.init()
 
     network = Network(env.action_space.n)
     network.to(device)
