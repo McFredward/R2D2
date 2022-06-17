@@ -18,6 +18,7 @@ class VizdoomEnv(gym.Env):
         self,
         level,
         frame_skip=1,
+        test=False,
     ):
         """
         Base class for Gym interface for ViZDoom. Thanks to https://github.com/shakenes/vizdoomgym
@@ -44,7 +45,10 @@ class VizdoomEnv(gym.Env):
         # init game
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        self.game.set_window_visible(False)
+        self.game.set_window_visible(test) #True for testing purpose
+
+        if test:
+            self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
 
         screen_format = self.game.get_screen_format()
         if screen_format != vzd.ScreenFormat.RGB24:
@@ -60,89 +64,52 @@ class VizdoomEnv(gym.Env):
         self.labels = self.game.is_labels_buffer_enabled()
         self.automap = self.game.is_automap_buffer_enabled()
 
-        allowed_buttons = []
+        self.num_delta_buttons = 0
+        self.all_button_names = []
+        count = 0
         for button in self.game.get_available_buttons():
             if "DELTA" in button.name:
-                warnings.warn(f"Removing button {button.name}. DELTA buttons are currently not supported in Gym wrapper. Use binary buttons instead.")
+                #warnings.warn(f"Removing button {button.name}. DELTA buttons are currently not supported in Gym wrapper. Use binary buttons instead.")
+                # Make an 1-setp action for each diretion:
+                self.num_delta_buttons += 1
+                self.all_button_names.append(button.name+"_POS_"+str(count))
+                count += 1
+                self.all_button_names.append(button.name+"_NEG_"+str(count))
+                count += 1
             else:
-                allowed_buttons.append(button)
-        self.game.set_available_buttons(allowed_buttons)
-        self.action_space = gym.spaces.Discrete(len(allowed_buttons))
+                self.all_button_names.append(button.name)
+
+        self.game.set_available_buttons(self.game.get_available_buttons())
+        self.action_space = gym.spaces.Discrete(len(self.all_button_names))
 
         # specify observation space(s)
-        spaces = {
-            "rgb": gym.spaces.Box(
-                0,
-                255,
-                (
-                    self.game.get_screen_height(),
-                    self.game.get_screen_width(),
-                    3,
-                ),
-                dtype=np.uint8,
-            )
-        }
-
-        if self.depth:
-            spaces["depth"] = gym.spaces.Box(
-                0,
-                255,
-                (
-                    self.game.get_screen_height(),
-                    self.game.get_screen_width(),
-                ),
-                dtype=np.uint8,
-            )
-
-        if self.labels:
-            spaces["labels"] = gym.spaces.Box(
-                0,
-                255,
-                (
-                    self.game.get_screen_height(),
-                    self.game.get_screen_width(),
-                ),
-                dtype=np.uint8,
-            )
-
-        if self.automap:
-            spaces["automap"] = gym.spaces.Box(
-                0,
-                255,
-                (
-                    self.game.get_screen_height(),
-                    self.game.get_screen_width(),
-                    # "automap" buffer uses same number of channels
-                    # as the main screen buffer
-                    3,
-                ),
-                dtype=np.uint8,
-            )
-
-        self.num_game_variables = self.game.get_available_game_variables_size()
-        if self.num_game_variables > 0:
-            spaces["gamevariables"] = gym.spaces.Box(
-                np.finfo(np.float32).min,
-                np.finfo(np.float32).max,
-                (self.num_game_variables,),
-                dtype=np.float32
-            )
-
-        self.observation_space = gym.spaces.Dict(spaces)
+        self.observation_shape = (self.game.get_screen_height(),self.game.get_screen_width(),3,)
+        self.observation_space = gym.spaces.Box(
+                                        0,
+                                        255,
+                                        self.observation_shape,
+                                        dtype=np.uint8,
+                                    )
 
     def step(self, action):
         assert self.action_space.contains(action), f"{action!r} ({type(action)}) invalid"
         assert self.state is not None, "Call `reset` before using `step` method."
-
         # convert action to vizdoom action space (one hot)
-        act = [0 for _ in range(self.action_space.n)]
-        act[action] = 1
+        act = [0 for _ in range(self.action_space.n - self.num_delta_buttons)]
+        if 'DELTA' in self.all_button_names[action]:
+            offset = int(self.all_button_names[action].split('_')[-1])
+            if self.all_button_names[action].split('_')[-2] == 'NEG':
+                act[action-offset] = -1
+            else:
+                act[action-offset] = 1
+        else:
+            act[action] = 1
 
         reward = self.game.make_action(act, self.frame_skip)
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
 
-        return self.__collect_observations(), reward, done, {}
+        return self.__collect_observations(), reward, done, {} #Only return RGB variant
 
     def reset(
         self,
@@ -162,21 +129,11 @@ class VizdoomEnv(gym.Env):
             return self.__collect_observations(), {}
 
     def __collect_observations(self):
-        observation = {}
         if self.state is not None:
-            observation["rgb"] = self.state.screen_buffer
-            if self.depth:
-                observation["depth"] = self.state.depth_buffer
-            if self.labels:
-                observation["labels"] = self.state.labels_buffer
-            if self.automap:
-                observation["automap"] = self.state.automap_buffer
-            if self.num_game_variables > 0:
-                observation["gamevariables"] = self.state.game_variables.astype(np.float32)
+            observation = self.state.screen_buffer
         else:
             # there is no state in the terminal step, so a zero observation is returned instead
-            for space_key, space_item in self.observation_space.spaces.items():
-                observation[space_key] = np.zeros(space_item.shape, dtype=space_item.dtype)
+            observation = np.zeros(self.observation_shape, dtype=np.uint8)
 
         return observation
 

@@ -1,5 +1,5 @@
 import os
-from vizdoom.gym_wrapper.base_gym_env import VizdoomEnv
+from .base_gym_env import VizdoomEnv
 from vizdoom import scenarios_path
 
 
