@@ -1,6 +1,10 @@
 
 game_name = 'Vizdoom'
-env_type = 'BasicWithAttack-v0'
+env_type = 'BasicDeathmatch-v0'
+#env_type = 'BasicWithAttack-v0'
+pretrain = "pretrain.pth" #name of the pretrain file in the root. No pretrain if empty string
+#pretrain = ""
+multiplayer = True
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM
 frame_skip = 1
@@ -25,7 +29,7 @@ block_length = 400  # cut one episode to numbers of blocks to improve the buffer
 
 amp = False # mixed precision training
 
-num_actors = 10
+num_actors = 5#10
 base_eps = 0.4
 alpha = 7
 log_interval = 20

@@ -20,7 +20,7 @@ from environment import create_env
 from priority_tree import create_ptree, ptree_sample, ptree_update
 import config
 import logging
-from vizdoom import gym_wrapper
+import vizdoom as vzd
 
 DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
 
@@ -93,6 +93,7 @@ class ReplayBuffer:
 
         with self.lock:
 
+            curr_block_ptr = self.block_ptr
             curr_block_ptr = self.block_ptr
             self.block_ptr = (self.block_ptr+1) % self.num_blocks
 
@@ -250,12 +251,15 @@ def caculate_mixed_td_errors(td_error, learning_steps):
 
 @ray.remote(num_cpus=1, num_gpus=1)
 class Learner:
-    def __init__(self, buffer: ReplayBuffer, game_name: str = config.game_name, grad_norm: int = config.grad_norm,
+    def __init__(self, buffer: ReplayBuffer, pretrain_file = "" , game_name: str = config.game_name, grad_norm: int = config.grad_norm,
                 lr: float = config.lr, eps:float = config.eps, amp: bool = config.amp,
                 target_net_update_interval: int = config.target_net_update_interval, save_interval: int = config.save_interval):
 
         self.game_name = game_name
         self.online_net = Network(create_env().action_space.n)
+        if pretrain_file != "":
+            self.online_net.load_state_dict(torch.load(os.getcwd()+"/"+pretrain_file)[0])
+
         self.online_net.cuda()
         self.online_net.train()
         self.target_net = deepcopy(self.online_net)
@@ -492,13 +496,16 @@ class LocalBuffer:
 
 @ray.remote(num_cpus=1)
 class Actor:
-    def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, obs_shape: np.ndarray = config.obs_shape,
+    def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str , obs_shape: np.ndarray = config.obs_shape,
                 max_episode_steps: int = config.max_episode_steps, block_length: int = config.block_length):
 
-        self.env = create_env(noop_start=True, clip_rewards=False)
+        self.env = create_env(noop_start=True, clip_rewards=False,multi_conf=multi_conf,is_host=is_host)
         self.action_dim = self.env.action_space.n
         self.model = Network(self.env.action_space.n)
         self.model.eval()
+        if pretrain_file != "":
+            self.model.load_state_dict(torch.load(os.getcwd()+"/"+pretrain_file)[0])
+
         self.local_buffer = LocalBuffer(self.action_dim)
         
         self.stacked_obs = torch.empty((1, *obs_shape), dtype=torch.float32)
@@ -527,6 +534,7 @@ class Actor:
 
             # apply action in env
             next_obs, reward, self.done, _ = self.env.step(action)
+            print(reward)
 
             self.last_action.fill_(0)
             self.last_action[0, action] = 1
@@ -577,4 +585,3 @@ class Actor:
         self.last_action.fill_(0)
         self.env_steps = 0
         self.done = False
-
