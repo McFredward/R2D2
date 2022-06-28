@@ -65,3 +65,9 @@ register(
     entry_point="vizdoom_gym_wrapper.gym_env_defns:VizdoomScenarioEnv",
     kwargs={"scenario_file": "basic_with_attack.cfg"}
 )
+
+register(
+    id="VizdoomBasicDeathmatch-v0",
+    entry_point="vizdoom_gym_wrapper.gym_env_defns:VizdoomScenarioEnv",
+    kwargs={"scenario_file": "multi.cfg"}
+)

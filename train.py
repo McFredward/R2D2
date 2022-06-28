@@ -5,6 +5,7 @@ import numpy as np
 import ray
 from worker import Learner, Actor, ReplayBuffer
 import config
+from vizdoom import scenarios_path
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -20,8 +21,14 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     ray.init()
 
     buffer = ReplayBuffer.remote()
-    learner = Learner.remote(buffer)
-    actors = [Actor.remote(get_epsilon(i), learner, buffer) for i in range(num_actors)]
+    learner = Learner.remote(buffer,config.pretrain)
+
+    multi_conf = ""
+    if config.multiplayer:
+        host_actor = Actor.remote(get_epsilon(0), learner, buffer, multi_conf, True,config.pretrain)
+        actors = [host_actor] + [Actor.remote(get_epsilon(i), learner, buffer, "127.0.0.1:5029",False,config.pretrain) for i in range(1,num_actors)]
+    else:
+        actors = [Actor.remote(get_epsilon(i), learner, buffer, multi_conf,False,config.pretrain) for i in range(num_actors)]
 
     for actor in actors:
         actor.run.remote()

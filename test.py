@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from model import Network
 from environment import create_env
 import config
+import ray
+import time
 import vizdoom as vzd
 device = torch.device('cpu')
 torch.set_num_threads(4)
@@ -85,8 +87,14 @@ def test_one_case(args):
 
     return sum_reward
 
-def play(rounds=10,checkpoint=-1): #-1 for the last snapshot
-    env = create_env(noop_start=False, clip_rewards=False)
+@ray.remote(num_cpus=1)
+def play(rounds=10,checkpoint=-1,client_args="",host=False,num_done=0): #-1 for the last snapshot
+    env = create_env(noop_start=False, clip_rewards=False,testing=True,multi_conf=client_args,is_host=host)
+    #load game again to change options
+    #env.game.set_window_visible(False)
+    #env.game.set_mode(vzd.Mode.ASYNC_PLAYER)
+    #env.frame_skip = 1
+    #env.game.init()
 
     network = Network(env.action_space.n)
     network.to(device)
@@ -116,11 +124,21 @@ def play(rounds=10,checkpoint=-1): #-1 for the last snapshot
         print("reward = {:.3f}".format(reward))
         sum_reward += reward
     print("mean reward = {:.3f}".format(sum_reward / rounds))
-
+    num_done += 1
 
 
 if __name__ == '__main__':
     
     #test()
-    play(30)
+    if not config.multiplayer:
+        play(30)
+    else:
+        num_done = 0
+        play.remote(10000,client_args="",host=True,num_done=num_done)
+        for actor in range(1,config.num_actors):
+            play.remote(10000,client_args="127.0.0.1:5029",host=False,num_done=num_done)
+
+        while num_done < config.num_actors:
+            time.sleep(config.log_interval)
+
 

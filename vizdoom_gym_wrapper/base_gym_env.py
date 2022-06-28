@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import pygame
 import vizdoom.vizdoom as vzd
+import random
 
 # A fixed set of colors for each potential label
 # for rendering an image.
@@ -18,6 +19,9 @@ class VizdoomEnv(gym.Env):
         self,
         level,
         frame_skip=1,
+        client_args="", #Multiplayer arg is string "IP:Port"
+        host = False,
+        num_players = 1,
         test=False,
     ):
         """
@@ -45,10 +49,35 @@ class VizdoomEnv(gym.Env):
         # init game
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        self.game.set_window_visible(test) #True for testing purpose
+        #self.game.set_window_visible(test) #True for testing purpose
+        self.game.set_window_visible(True)
 
-        if test:
+        if test or len(client_args) > 0:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
+
+        if len(client_args) > 0 or host: #Multiplayer match
+            if host:
+                self.game.add_game_args("-host " + str(num_players) + " "
+                # This machine will function as a host for a multiplayer game with this many players (including this machine). 
+                # It will wait for other machines to connect using the -join parameter and then start the game when everyone is connected.
+                "-port 5029 "  # Specifies the port (default is 5029).
+                "+viz_connect_timeout 60 "  # Specifies the time (in seconds), that the host will wait for other players (default is 60).
+                "-deathmatch "  # Deathmatch rules are used for the game.
+                "+timelimit 10.0 "  # The game (episode) will end after this many minutes have elapsed.
+                "+sv_forcerespawn 1 "  # Players will respawn automatically after they die.
+                "+sv_noautoaim 1 "  # Autoaim is disabled for all players.
+                "+sv_respawnprotect 1 "  # Players will be invulnerable for two second after spawning.
+                "+sv_spawnfarthest 1 "  # Players will be spawned as far as possible from any other players.
+                "+sv_nocrouch 1 "  # Disables crouching.
+                "+viz_respawn_delay 10 "  # Sets delay between respawns (in seconds, default is 0).
+                "+viz_nocheat 1")  # Disables depth and labels buffer and the ability to use commands that could interfere with multiplayer game.
+            else:
+                ip, port = client_args.split(':')
+                self.game.add_game_args("-join {} -port {}".format(ip,port))  # Connect to a host for a multiplayer game.
+
+            color = random.choice(range(8)) #random player color
+            self.game.add_game_args("+name AI +colorset {}".format(color))
+
 
         screen_format = self.game.get_screen_format()
         if screen_format != vzd.ScreenFormat.RGB24:
