@@ -79,9 +79,9 @@ class WarpFrame(gym.ObservationWrapper):
         return obs
 
 
-def create_env(env_name=config.game_name+config.env_type, noop_start=True, clip_rewards=True,testing=False):
+def create_env(env_name=config.game_name+config.env_type, noop_start=True, clip_rewards=True):
 
-    env = gym.make(env_name,frame_skip=config.frame_skip,test=testing)
+    env = gym.make(env_name,frame_skip=config.frame_skip)
 
     env = WarpFrame(env)
 

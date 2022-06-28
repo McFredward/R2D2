@@ -19,7 +19,6 @@ from model import Network
 from environment import create_env
 from priority_tree import create_ptree, ptree_sample, ptree_update
 import config
-import logging
 from vizdoom import gym_wrapper
 
 DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
@@ -73,10 +72,6 @@ class ReplayBuffer:
         self.learning_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
         self.burn_in_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
         self.forward_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
-
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
-        self.logger = logging.getLogger()
-        self.logger.addHandler(logging.FileHandler('train.log', 'w'))
 
     def __len__(self):
         return np.sum(self.learning_steps).item()
@@ -218,17 +213,17 @@ class ReplayBuffer:
             return False
 
     def log(self, log_interval):
-        self.logger.info(f'buffer size: {np.sum(self.learning_steps)}')
-        self.logger.info(f'buffer update speed: {(self.env_steps-self.last_env_steps)/log_interval}/s')
-        self.logger.info(f'number of environment steps: {self.env_steps}')
+        print(f'buffer size: {np.sum(self.learning_steps)}')
+        print(f'buffer update speed: {(self.env_steps-self.last_env_steps)/log_interval}/s')
+        print(f'number of environment steps: {self.env_steps}')
         if self.num_episodes != 0:
-            self.logger.info(f'average episode return: {self.episode_reward/self.num_episodes:.4f}')
+            print(f'average episode return: {self.episode_reward/self.num_episodes:.4f}')
             self.episode_reward = 0
             self.num_episodes = 0
-        self.logger.info(f'number of training steps: {self.num_training_steps}')
-        self.logger.info(f'training speed: {(self.num_training_steps-self.last_training_steps)/log_interval}/s')
+        print(f'number of training steps: {self.num_training_steps}')
+        print(f'training speed: {(self.num_training_steps-self.last_training_steps)/log_interval}/s')
         if self.num_training_steps != self.last_training_steps:
-            self.logger.info(f'loss: {self.sum_loss/(self.num_training_steps-self.last_training_steps):.4f}')
+            print(f'loss: {self.sum_loss/(self.num_training_steps-self.last_training_steps):.4f}')
             self.last_training_steps = self.num_training_steps
             self.sum_loss = 0
         self.last_env_steps = self.env_steps
@@ -256,6 +251,9 @@ class Learner:
 
         self.game_name = game_name
         self.online_net = Network(create_env().action_space.n)
+        for param in self.online_net.parameters():
+            param.requires_grad = False
+
         self.online_net.cuda()
         self.online_net.train()
         self.target_net = deepcopy(self.online_net)
@@ -277,6 +275,12 @@ class Learner:
 
     def get_weights(self):
         return self.weights_id
+
+    def update_params(self, mutation_power=0.02):
+        '''Update parameters'''
+
+        for param in self.online_net.parameters():
+            print(param.shape)
 
     def store_weights(self):
         state_dict = self.online_net.state_dict()
@@ -457,7 +461,7 @@ class LocalBuffer:
                                     'valid').astype(DEFAULT_NP_FLOAT)
 
         burn_in_steps = np.array([min(i*self.learning_steps+self.curr_burn_in_steps, self.burn_in_steps) for i in range(num_sequences)], dtype=np.uint8)
-        learning_steps = np.array([min(self.learning_steps, self.size-i*self.learning_steps) for i in range(num_sequences)], dtype=np.int64)
+        learning_steps = np.array([min(self.learning_steps, self.size-i*self.learning_steps) for i in range(num_sequences)], dtype=np.long)
         forward_steps = np.array([min(self.forward_steps, self.size+1-np.sum(learning_steps[:i+1])) for i in range(num_sequences)], dtype=np.uint8)
         assert forward_steps[-1] == 1 and burn_in_steps[0] == self.curr_burn_in_steps
         assert last_action.shape[0] == self.curr_burn_in_steps + np.sum(learning_steps) + 1
@@ -498,6 +502,9 @@ class Actor:
         self.env = create_env(noop_start=True, clip_rewards=False)
         self.action_dim = self.env.action_space.n
         self.model = Network(self.env.action_space.n)
+        for param in self.model.parameters():
+            param.requires_grad = False
+
         self.model.eval()
         self.local_buffer = LocalBuffer(self.action_dim)
         
@@ -562,6 +569,12 @@ class Actor:
         weights_id = ray.get(self.learner.get_weights.remote())
         weights = ray.get(weights_id)
         self.model.load_state_dict(weights)
+
+    def update_params(self, mutation_power=0.02):
+        '''Update parameters'''
+
+        for param in self.model.parameters():
+            print(param.shape)
 
     # def select_action(self, q_value: torch.Tensor) -> int:
     #     if random.random() < self.epsilon:
