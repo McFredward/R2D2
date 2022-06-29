@@ -45,6 +45,7 @@ class VizdoomEnv(gym.Env):
         Action space is always a Discrete one, one choice for each button (only one button can be pressed down at a time).
         """
         self.frame_skip = frame_skip
+        self.is_multiplayer = len(client_args) > 0 or host
 
         # init game
         self.game = vzd.DoomGame()
@@ -52,10 +53,11 @@ class VizdoomEnv(gym.Env):
         #self.game.set_window_visible(test) #True for testing purpose
         self.game.set_window_visible(True)
 
-        if test or len(client_args) > 0:
+        if test or self.is_multiplayer:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
 
-        if len(client_args) > 0 or host: #Multiplayer match
+        if self.is_multiplayer: #Multiplayer match
+            #safe game variables since ACS skript cant handle specific reward
             if host:
                 self.game.add_game_args("-host " + str(num_players) + " "
                 # This machine will function as a host for a multiplayer game with this many players (including this machine). 
@@ -85,6 +87,13 @@ class VizdoomEnv(gym.Env):
             self.game.set_screen_format(vzd.ScreenFormat.RGB24)
 
         self.game.init()
+
+        if self.is_multiplayer:
+            self.game_variables = [self.game.get_game_variable(vzd.GameVariable.HEALTH),
+                                   self.game.get_game_variable(vzd.GameVariable.HITCOUNT),
+                                   self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO),
+                                   self.game.get_game_variable(vzd.GameVariable.FRAGCOUNT)]
+
         self.state = None
         self.window_surface = None
         self.isopen = True
@@ -135,10 +144,39 @@ class VizdoomEnv(gym.Env):
             act[action] = 1
 
         reward = self.game.make_action(act, self.frame_skip)
+        if self.is_multiplayer:
+            reward = self.multiplayer_reward()
+
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
 
         return self.__collect_observations(), reward, done, {} #Only return RGB variant
+
+    #ACS Script reward is global for all players within the map -> Multiplayer reward must be calculated through game variables
+    def multiplayer_reward(self):
+        reward = 0
+        old_health, old_hits, old_ammo, old_frags = self.game_variables
+        new_health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
+        new_hits = self.game.get_game_variable(vzd.GameVariable.HITCOUNT)
+        new_ammo = self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO)
+        new_frags = self.game.get_game_variable(vzd.GameVariable.FRAGCOUNT)
+
+        if old_health > new_health and new_health != 0:
+            reward -= 20
+        elif old_health > new_health and new_health == 0: #player died
+            reward -= 100
+
+        if old_ammo > new_ammo:
+            reward -= 5
+
+        if old_hits < new_hits:
+            reward += 25
+
+        if old_frags < new_frags:
+            reward += 100
+
+        self.game_variables = [new_health,new_hits,new_ammo,new_frags]
+        return reward
 
     def reset(
         self,

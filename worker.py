@@ -534,7 +534,6 @@ class Actor:
 
             # apply action in env
             next_obs, reward, self.done, _ = self.env.step(action)
-            print(reward)
 
             self.last_action.fill_(0)
             self.last_action[0, action] = 1
