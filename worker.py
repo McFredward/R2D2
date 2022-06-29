@@ -307,7 +307,7 @@ class Learner:
     def train(self):
         scaler = GradScaler()
         obs_idx = torch.LongTensor([i+j for i in range(config.seq_len) for j in range(config.frame_stack)])
-        torch.save((self.online_net.state_dict(), 0, 0), os.path.join('models', '{}0.pth'.format(self.game_name)))
+        torch.save((self.online_net.state_dict(), 0, 0), os.path.join(config.save_dir, '{}0.pth'.format(self.game_name)))
         while self.counter < config.training_steps:
 
             if self.batched_data:
@@ -373,7 +373,7 @@ class Learner:
             
             # save model 
             if self.counter % self.save_interval == 0:
-                torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join('models', '{}{}.pth'.format(self.game_name, self.counter//self.save_interval)))
+                torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join(config.save_dir, '{}{}.pth'.format(self.game_name, self.counter//self.save_interval)))
 
     @staticmethod
     def value_rescale(value, eps=1e-2):

@@ -2,8 +2,9 @@
 game_name = 'Vizdoom'
 env_type = 'BasicDeathmatch-v0'
 #env_type = 'BasicWithAttack-v0'
-pretrain = "pretrain.pth" #name of the pretrain file in the root. No pretrain if empty string
+pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
 #pretrain = ""
+save_dir = 'models'
 multiplayer = True
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM
