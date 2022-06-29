@@ -4,7 +4,7 @@ env_type = 'BasicDeathmatch-v0'
 #env_type = 'BasicWithAttack-v0'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
 #pretrain = ""
-save_dir = 'models'
+save_dir = '/data/lissek/R2D2/models'
 multiplayer = True
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM
@@ -22,7 +22,7 @@ gamma = 0.997
 prio_exponent = 0.9
 importance_sampling_exponent = 0.6
 
-training_steps = 100000
+training_steps = 500000
 buffer_capacity = 500000
 max_episode_steps = 27000
 actor_update_interval = 400
@@ -48,7 +48,3 @@ cnn_out_dim = 1024
 render = False
 save_plot = True
 test_epsilon = 0.01
-
-
-
-

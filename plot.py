@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import make_interp_spline
 import numpy as np
 
-with open('models/Basic_with_attack1/train.log') as f:
+with open('train.log') as f:
     lines = f.readlines()
 
 rewards = []
@@ -43,7 +43,7 @@ ax1.plot(x_inter,rewards_interpolated,color='tab:blue')
 ax1.tick_params('y',colors='tab:blue')
 ax1.set_ylabel('avg reward',color='tab:blue')
 ax1.set_xlabel('time in min')
-ax1.set_xticks(list(np.arange(0,len(rewards)*20/60,60))+[np.ceil(len(rewards)*20/60)])
+#ax1.set_xticks(list(np.arange(0,len(rewards)*20/60,60))+[np.ceil(len(rewards)*20/60)])
 ax2 = ax1.twinx()
 ax2.plot(x_loss,loss,color='tab:red',alpha=0.5)
 ax2.tick_params('y',colors='tab:red')

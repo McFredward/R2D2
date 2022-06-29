@@ -50,8 +50,8 @@ class VizdoomEnv(gym.Env):
         # init game
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        #self.game.set_window_visible(test) #True for testing purpose
-        self.game.set_window_visible(True)
+        self.game.set_window_visible(test) #True for testing purpose
+        #self.game.set_window_visible(True)
 
         if test or self.is_multiplayer:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
@@ -60,9 +60,9 @@ class VizdoomEnv(gym.Env):
             #safe game variables since ACS skript cant handle specific reward
             if host:
                 self.game.add_game_args("-host " + str(num_players) + " "
-                # This machine will function as a host for a multiplayer game with this many players (including this machine). 
+                # This machine will function as a host for a multiplayer game with this many players (including this machine).
                 # It will wait for other machines to connect using the -join parameter and then start the game when everyone is connected.
-                "-port 5029 "  # Specifies the port (default is 5029).
+                "-port 5060 "  # Specifies the port (default is 5029).
                 "+viz_connect_timeout 60 "  # Specifies the time (in seconds), that the host will wait for other players (default is 60).
                 "-deathmatch "  # Deathmatch rules are used for the game.
                 "+timelimit 10.0 "  # The game (episode) will end after this many minutes have elapsed.
