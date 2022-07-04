@@ -285,7 +285,24 @@ class Learner:
         '''Update parameters'''
 
         for param in self.online_net.parameters():
-            print(param.shape)
+            if (len(param.sahpe) == 4): # Conv2D
+                for i0 in range(param.shape[0]):
+                    for i1 in range(param.shape[1]):
+                        for i2 in range(param.shape[2]):
+                            for i3 in range(param.shape[3]):
+
+                                param[i0][i1][i2][i3]+= mutation_power * np.random.randn()
+            elif (len(param.shape) == 2): # Linear
+                for i0 in range(param.shape[0]):
+                    for i1 in range(param.shape[1]):
+
+                        param[i0][i1]+= mutation_power * np.random.randn()
+
+            elif(len(param.shape) == 1): # biases
+                for i0 in range(param.shape[0]):
+
+                    param[i0] += mutation_power * np.random.randn()
+
 
     def store_weights(self):
         state_dict = self.online_net.state_dict()
@@ -388,6 +405,9 @@ class Learner:
     def inverse_value_rescale(value, eps=1e-2):
         temp = ((1 + 4*eps*(value.abs()+1+eps)).sqrt() - 1) / (2*eps)
         return value.sign() * (temp.square() - 1)
+
+    def get_reward(self):
+        return self.buffer.rew_buf
 
 
 ############################## Actor ##############################
