@@ -26,7 +26,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     multi_conf = ""
     if config.multiplayer:
         host_actor = Actor.remote(get_epsilon(0), learner, buffer, multi_conf, True,config.pretrain)
-        actors = [host_actor] + [Actor.remote(get_epsilon(i), learner, buffer, "127.0.0.1:5029",False,config.pretrain) for i in range(1,num_actors)]
+        actors = [host_actor] + [Actor.remote(get_epsilon(i), learner, buffer, "127.0.0.1:5060",False,config.pretrain) for i in range(1,num_actors)]
     else:
         actors = [Actor.remote(get_epsilon(i), learner, buffer, multi_conf,False,config.pretrain) for i in range(num_actors)]
 
@@ -40,7 +40,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
     print('start training')
     learner.run.remote()
-    
+
     done = False
     while not done:
         time.sleep(log_interval)
@@ -50,4 +50,3 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 if __name__ == '__main__':
 
     train()
-
