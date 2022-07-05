@@ -21,9 +21,9 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
     ray.init()
 
-    NUM_AGENTS = 5
-    TOP_LIMIT = 2
-    GENERATIONS = 100
+    NUM_AGENTS = 1
+    TOP_LIMIT = 1
+    GENERATIONS = 50
 
     agents = []
 
@@ -104,7 +104,7 @@ def add_elite(agents, sorted_parent_indexes, elite_index=None, only_consider_top
             top_score = score
             top_elite_index = i
 
-    print("Elite selected with index ",top_elite_index, " and score", top_score)
+    print("Elite selected with index ", top_elite_index, " and score", top_score)
 
     child_agent = copy.deepcopy(agents[top_elite_index])
     return child_agent
