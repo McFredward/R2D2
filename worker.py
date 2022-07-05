@@ -253,8 +253,8 @@ class Learner:
 
         self.game_name = game_name
         self.online_net = Network(create_env().action_space.n)
-        for param in self.online_net.parameters():
-            param.requires_grad = False
+        # for param in self.online_net.parameters():
+        #     param.requires_grad = False
 
         if pretrain_file != "":
             self.online_net.load_state_dict(torch.load(os.getcwd()+"/"+pretrain_file)[0])
@@ -527,8 +527,8 @@ class Actor:
         self.env = create_env(noop_start=True, clip_rewards=False,multi_conf=multi_conf,is_host=is_host)
         self.action_dim = self.env.action_space.n
         self.model = Network(self.env.action_space.n)
-        for param in self.model.parameters():
-            param.requires_grad = False
+        # for param in self.model.parameters():
+        #     param.requires_grad = False
 
         self.model.eval()
         if pretrain_file != "":
