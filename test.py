@@ -89,7 +89,7 @@ def test_one_case(args):
     return sum_reward
 
 @ray.remote(num_cpus=1)
-def play(args,rounds=10,client_args="",host=False,num_done=0): #-1 for the last snapshot
+def play(args,num_done,rounds=10,client_args="",host=False): #-1 for the last snapshot
     env = create_env(env_name=args.env_name,noop_start=False, clip_rewards=False,testing=True,multi_conf=client_args,is_host=host)
     #load game again to change options
     #env.game.set_window_visible(False)
@@ -125,7 +125,7 @@ def play(args,rounds=10,client_args="",host=False,num_done=0): #-1 for the last 
         print("reward = {:.3f}".format(reward))
         sum_reward += reward
     print("mean reward = {:.3f}".format(sum_reward / rounds))
-    num_done += 1
+    num_done[0] += 1
 
 
 if __name__ == '__main__':
@@ -134,18 +134,24 @@ if __name__ == '__main__':
     parser.add_argument("--file_path", dest='file',type=str)
     parser.add_argument('--env_name', dest='env_name', default=config.game_name+config.env_type)
     parser.add_argument("--multiplayer", action='store_true')
+    parser.add_argument("--num_actors", dest='num_actors', default=config.num_actors)
     parser.add_argument("--num_rounds", dest="num_rounds", type=int, default=30)
     args = parser.parse_args()
 
+    num_done = [0]
     if not args.multiplayer:
-        play(args,args.num_rounds)
-    else:
-        num_done = 0
-        play.remote(args,10000,client_args="",host=True,num_done=num_done)
-        for actor in range(1,config.num_actors):
-            play.remote(args,10000,client_args="127.0.0.1:5060",host=False,num_done=num_done)
+        play.remote(args,num_done,args.num_rounds)
 
-        while num_done < config.num_actors:
+        while num_done[0] < 1:
+            time.sleep(config.log_interval)
+
+    else:
+         #have to by a list to pass it by reference
+        play.remote(args,num_done,10000,client_args="",host=True)
+        for actor in range(1,args.num_actors):
+            play.remote(args,num_done,10000,client_args="127.0.0.1:5060",host=False)
+
+        while num_done[0] < args.num_actors:
             time.sleep(config.log_interval)
 
 
