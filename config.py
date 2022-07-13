@@ -1,21 +1,25 @@
 
 game_name = 'Vizdoom'
-env_type = 'BasicDeathmatch-v0'
-#env_type = 'BasicWithAttack-v0'
+#env_type = 'BasicDeathmatch-v0'
+env_type = 'BasicWithAttack-v0'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
 #pretrain = ""
-save_dir = '/data/lissek/R2D2/models'
-multiplayer = True
+#save_dir = '/data/lissek/R2D2/models'
+save_dir = 'models'
+multiplayer = False
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM
 frame_skip = 1
+
+#---Changes to the overall architecture---
+use_prioritized_replay = True
 
 
 lr = 1e-4
 eps = 1e-3
 grad_norm = 40
 batch_size = 128
-learning_starts = 10000#50000
+learning_starts = 100#10000#50000
 save_interval = 1000
 target_net_update_interval = 2000
 gamma = 0.997

@@ -53,10 +53,12 @@ class VizdoomEnv(gym.Env):
         self.game.set_window_visible(test) #True for testing purpose
         #self.game.set_window_visible(True)
 
-        if test or self.is_multiplayer:
+        if test:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
+            self.game.set_episode_timeout(0)
 
         if self.is_multiplayer: #Multiplayer match
+            self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
             #safe game variables since ACS skript cant handle specific reward
             if host:
                 self.game.add_game_args("-host " + str(num_players) + " "
