@@ -11,9 +11,6 @@ frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM
 frame_skip = 1
 
-#---Changes to the overall architecture---
-use_prioritized_replay = True
-
 
 lr = 1e-4
 eps = 1e-3
@@ -23,8 +20,8 @@ learning_starts = 100#10000#50000
 save_interval = 1000
 target_net_update_interval = 2000
 gamma = 0.997
-prio_exponent = 0.9
-importance_sampling_exponent = 0.6
+prio_exponent = 0#0.9 #How much Prioritization should be used | 0 for no Prioritized replay
+importance_sampling_exponent = 0#0.6
 
 training_steps = 500000
 buffer_capacity = 500000

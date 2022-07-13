@@ -14,7 +14,7 @@ def create_ptree(capacity: int) -> Tuple[int, np.ndarray]:
 
 @nb.jit(nopython=True, cache=True)
 def ptree_update(num_layers: int, ptree: np.ndarray, prio_exponent: float, td_error: np.ndarray, idxes: np.ndarray):
-    priorities = td_error ** prio_exponent
+    priorities = np.where(td_error != 0,td_error ** prio_exponent,0) #Now its also possible to set alpha to 0
 
     #Formula to convert array indices to leaf indices of the tree
     idxes = idxes + 2**(num_layers-1) - 1
@@ -26,15 +26,8 @@ def ptree_update(num_layers: int, ptree: np.ndarray, prio_exponent: float, td_er
         idxes = np.unique(idxes) #delete double entrys (two leafs have the same parent)
         ptree[idxes] = ptree[2*idxes+1] + ptree[2*idxes+2] #sum up the children
 
-def ptree_sample(num_layers: int, ptree: np.ndarray, is_exponent: float, num_samples: int) -> Tuple[np.ndarray, np.ndarray]:
-    if config.use_prioritized_replay:
-        return ptree_sample_prioritized(num_layers,ptree,is_exponent,num_samples)
-    else:
-        return ptree_sample_uniformly(num_layers,num_samples)
-
-
 @nb.jit(nopython=True, cache=True)
-def ptree_sample_prioritized(num_layers: int, ptree: np.ndarray, is_exponent: float, num_samples: int) -> Tuple[np.ndarray, np.ndarray]:
+def ptree_sample(num_layers: int, ptree: np.ndarray, is_exponent: float, num_samples: int) -> Tuple[np.ndarray, np.ndarray]:
     p_sum = ptree[0] # whole sum
     interval = p_sum / num_samples
 
@@ -52,14 +45,5 @@ def ptree_sample_prioritized(num_layers: int, ptree: np.ndarray, is_exponent: fl
     is_weights = np.power(priorities/min_p, -is_exponent)
 
     idxes -= 2**(num_layers-1) - 1
-
-    return idxes, is_weights
-
-@nb.jit(nopython=True, cache=True)
-def ptree_sample_uniformly(num_layers: int, num_samples: int) -> Tuple[np.ndarray, np.ndarray]:
-    #get all leafs
-    idxes = np.array(range(0,2**(num_layers-1) - 1))
-    idxes = np.random.choice(idxes,size=num_samples)
-    is_weights = np.ones(idxes.shape)
 
     return idxes, is_weights
