@@ -43,6 +43,7 @@ forward_steps = 5
 seq_len = burn_in_steps + learning_steps + forward_steps
 
 # network setting
+use_dueling = False
 hidden_dim = 512
 cnn_out_dim = 1024
 

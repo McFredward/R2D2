@@ -6,7 +6,7 @@ import config
 
 
 class Network(nn.Module):
-    def __init__(self, action_dim, obs_shape=config.obs_shape, hidden_dim=config.hidden_dim, cnn_out_dim=config.cnn_out_dim):
+    def __init__(self, action_dim, obs_shape=config.obs_shape, hidden_dim=config.hidden_dim, cnn_out_dim=config.cnn_out_dim,dueling=config.use_dueling):
         super().__init__()
 
         # 84 x 84 input
@@ -15,6 +15,7 @@ class Network(nn.Module):
         self.obs_shape = obs_shape
         self.hidden_dim = hidden_dim
         self.cnn_out_dim = cnn_out_dim
+        self.is_dueling = dueling
 
         self.max_forward_steps = 5
 
@@ -54,8 +55,12 @@ class Network(nn.Module):
         hidden = recurrent_output[0].squeeze(1)
 
         adv = self.advantage(hidden)
-        val = self.value(hidden)
-        q_value = val + adv - adv.mean(1, keepdim=True)
+
+        if self.is_dueling:
+            val = self.value(hidden)
+            q_value = val + adv - adv.mean(1, keepdim=True)
+        else:
+            q_value = adv
 
         return q_value
 
