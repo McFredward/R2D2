@@ -1,8 +1,15 @@
 import matplotlib.pyplot as plt
 from scipy.interpolate import make_interp_spline
 import numpy as np
+import argparse
 
-with open('train.log') as f:
+parser = argparse.ArgumentParser()
+parser.add_argument("--file_path", dest='file', default='train.log',type=str)
+parser.add_argument("--show_all", action='store_true')
+parser.add_argument("--max_time", dest='max_time', default=-1,type=int)
+args = parser.parse_args()
+
+with open(args.file) as f:
     lines = f.readlines()
 
 rewards = []
@@ -14,7 +21,7 @@ loss_appeared = False
 loss_started = False
 for line in lines:
     if 'buffer size:' in line: #beginning of one block
-        if not loss_appeared and loss_started:
+        if not args.show_all and not loss_appeared and loss_started:
             break
         count += 1
         loss_appeared = False
@@ -31,6 +38,13 @@ for line in lines:
         loss_started = True
 
 #x = np.arange(0,len(rewards)*20/60,20/60)
+
+if args.max_time > 0:
+    max_iter = min(int(args.max_time*60/20),len(x_reward))
+    x_reward = x_reward[:max_iter]
+    rewards = rewards[:max_iter]
+    x_loss = x_loss[:max_iter]
+    loss = loss[:max_iter]
 
 interpolation = make_interp_spline(x_reward, rewards)
 x_inter = np.linspace(min(x_reward), max(x_reward), 120)
