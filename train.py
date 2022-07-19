@@ -26,7 +26,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     for player in range(num_players):
 
         buffer = ReplayBuffer.remote(player)
-        learner = Learner.remote(buffer,config.pretrain)
+        learner = Learner.remote(player,buffer,config.pretrain)
 
         multi_conf = ""
         if config.multiplayer:
