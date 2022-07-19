@@ -1,20 +1,18 @@
 
 game_name = 'Vizdoom'
-#env_type = 'BasicDeathmatch-v0'
-env_type = 'BasicWithAttack-v0'
+env_type = 'BasicDeathmatch-v0'
+#env_type = 'BasicWithAttack-v0'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
-#pretrain = ""
 #save_dir = '/data/lissek/R2D2/models'
 save_dir = 'models'
-multiplayer = False
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM
 frame_skip = 1
 
 
 lr = 1e-4
-eps = 1e-3
-grad_norm = 40
+eps = 1e-3 #Adam optimzer epsilon
+grad_norm = 40 #maximum value of the total gradient norm, otherwise gradients will be clipped
 batch_size = 128
 learning_starts = 100#10000#50000
 save_interval = 1000
@@ -31,10 +29,15 @@ block_length = 400  # cut one episode to numbers of blocks to improve the buffer
 
 amp = False # mixed precision training
 
-num_actors = 5#10
-base_eps = 0.4
-alpha = 7
+num_actors = 2#10
+base_eps = 0.4 #epsilon-greedy-strategy
+alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
+
+#Multiplayer related
+multiplayer = True
+num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game
+portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
 
 # sequence setting
 burn_in_steps = 40
@@ -43,7 +46,7 @@ forward_steps = 5
 seq_len = burn_in_steps + learning_steps + forward_steps
 
 # network setting
-use_dueling = False
+use_dueling = True
 hidden_dim = 512
 cnn_out_dim = 1024
 

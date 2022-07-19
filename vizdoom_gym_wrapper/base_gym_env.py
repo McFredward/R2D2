@@ -22,6 +22,7 @@ class VizdoomEnv(gym.Env):
         client_args="", #Multiplayer arg is string "IP:Port"
         host = False,
         num_players = 1,
+        port = 5060,
         test=False,
     ):
         """
@@ -50,8 +51,8 @@ class VizdoomEnv(gym.Env):
         # init game
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        self.game.set_window_visible(test) #True for testing purpose
-        #self.game.set_window_visible(True)
+        #self.game.set_window_visible(test) #True for testing purpose
+        self.game.set_window_visible(True)
 
         if test:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
@@ -64,7 +65,7 @@ class VizdoomEnv(gym.Env):
                 self.game.add_game_args("-host " + str(num_players) + " "
                 # This machine will function as a host for a multiplayer game with this many players (including this machine).
                 # It will wait for other machines to connect using the -join parameter and then start the game when everyone is connected.
-                "-port 5060 "  # Specifies the port (default is 5029).
+                "-port {} ".format(port) +  # Specifies the port (default is 5029).
                 "+viz_connect_timeout 60 "  # Specifies the time (in seconds), that the host will wait for other players (default is 60).
                 "-deathmatch "  # Deathmatch rules are used for the game.
                 "+timelimit 10.0 "  # The game (episode) will end after this many minutes have elapsed.
@@ -106,16 +107,13 @@ class VizdoomEnv(gym.Env):
 
         self.num_delta_buttons = 0
         self.all_button_names = []
-        count = 0
         for button in self.game.get_available_buttons():
             if "DELTA" in button.name:
                 #warnings.warn(f"Removing button {button.name}. DELTA buttons are currently not supported in Gym wrapper. Use binary buttons instead.")
                 # Make an 1-setp action for each diretion:
+                self.all_button_names.append(button.name+"_POS_"+str(self.num_delta_buttons))
+                self.all_button_names.append(button.name+"_NEG_"+str(self.num_delta_buttons))
                 self.num_delta_buttons += 1
-                self.all_button_names.append(button.name+"_POS_"+str(count))
-                count += 1
-                self.all_button_names.append(button.name+"_NEG_"+str(count))
-                count += 1
             else:
                 self.all_button_names.append(button.name)
 
@@ -137,14 +135,13 @@ class VizdoomEnv(gym.Env):
         # convert action to vizdoom action space (one hot)
         act = [0 for _ in range(self.action_space.n - self.num_delta_buttons)]
         if 'DELTA' in self.all_button_names[action]:
-            offset = int(self.all_button_names[action].split('_')[-1])
+            idx_delta = int(self.all_button_names[action].split('_')[-1])
             if self.all_button_names[action].split('_')[-2] == 'NEG':
-                act[action-offset] = -1
+                act[action-(idx_delta+1)] = -1
             else:
-                act[action-offset] = 1
+                act[action-idx_delta] = 1
         else:
             act[action] = 1
-
         reward = self.game.make_action(act, self.frame_skip)
         if self.is_multiplayer:
             reward = self.multiplayer_reward()

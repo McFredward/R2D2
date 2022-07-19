@@ -19,8 +19,8 @@ from model import Network
 from environment import create_env
 from priority_tree import create_ptree, ptree_sample, ptree_update
 import config
-import logging
 import vizdoom as vzd
+import logging
 
 DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
 
@@ -28,10 +28,13 @@ DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
 
 @ray.remote(num_cpus=1)
 class ReplayBuffer:
-    def __init__(self, buffer_capacity=config.buffer_capacity, sequence_len=config.block_length,
+    def __init__(self,player_idx, buffer_capacity=config.buffer_capacity, sequence_len=config.block_length,
                 alpha=config.prio_exponent, beta=config.importance_sampling_exponent,
                 batch_size=config.batch_size, frame_stack=config.frame_stack):
 
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+        self.logger = logging.getLogger('player_{}'.format(player_idx))
+        self.logger.addHandler(logging.FileHandler('train_player{}.log'.format(player_idx), 'w'))
         self.buffer_capacity = buffer_capacity
         self.sequence_len = config.learning_steps
         self.num_sequences = buffer_capacity//self.sequence_len
@@ -74,9 +77,6 @@ class ReplayBuffer:
         self.burn_in_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
         self.forward_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
 
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
-        self.logger = logging.getLogger()
-        self.logger.addHandler(logging.FileHandler('train.log', 'w'))
 
     def __len__(self):
         return np.sum(self.learning_steps).item()
@@ -248,7 +248,7 @@ def caculate_mixed_td_errors(td_error, learning_steps):
 
     return mixed_td_errors
 
-@ray.remote(num_cpus=1, num_gpus=1)
+@ray.remote(num_cpus=1, num_gpus=0.5)
 class Learner:
     def __init__(self, buffer: ReplayBuffer, pretrain_file = "" , game_name: str = config.game_name, grad_norm: int = config.grad_norm,
                 lr: float = config.lr, eps:float = config.eps, amp: bool = config.amp,
@@ -495,10 +495,10 @@ class LocalBuffer:
 
 @ray.remote(num_cpus=1)
 class Actor:
-    def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str , obs_shape: np.ndarray = config.obs_shape,
+    def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str ,port : int = 5060, obs_shape: np.ndarray = config.obs_shape,
                 max_episode_steps: int = config.max_episode_steps, block_length: int = config.block_length):
 
-        self.env = create_env(noop_start=True, clip_rewards=False,multi_conf=multi_conf,is_host=is_host)
+        self.env = create_env(clip_rewards=False,multi_conf=multi_conf,is_host=is_host,port=port)
         self.action_dim = self.env.action_space.n
         self.model = Network(self.env.action_space.n)
         self.model.eval()
