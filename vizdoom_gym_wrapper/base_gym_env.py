@@ -24,6 +24,7 @@ class VizdoomEnv(gym.Env):
         num_players = 1,
         port = 5060,
         test=False,
+        player_name = 'AI',
     ):
         """
         Base class for Gym interface for ViZDoom. Thanks to https://github.com/shakenes/vizdoomgym
@@ -81,7 +82,7 @@ class VizdoomEnv(gym.Env):
                 self.game.add_game_args("-join {} -port {}".format(ip,port))  # Connect to a host for a multiplayer game.
 
             color = random.choice(range(8)) #random player color
-            self.game.add_game_args("+name AI +colorset {}".format(color))
+            self.game.add_game_args("+name {} +colorset {}".format(player_name,color))
 
 
         screen_format = self.game.get_screen_format()
