@@ -71,3 +71,9 @@ register(
     entry_point="vizdoom_gym_wrapper.gym_env_defns:VizdoomScenarioEnv",
     kwargs={"scenario_file": "multi.cfg"}
 )
+
+register(
+    id="VizdoomSingleDeathmatch-v0",
+    entry_point="vizdoom_gym_wrapper.gym_env_defns:VizdoomScenarioEnv",
+    kwargs={"scenario_file": "multi_single.cfg"}
+)

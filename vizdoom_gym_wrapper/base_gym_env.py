@@ -50,6 +50,7 @@ class VizdoomEnv(gym.Env):
         self.is_multiplayer = len(client_args) > 0 or host
 
         # init game
+        self.level = level
         self.game = vzd.DoomGame()
         self.game.load_config(level)
         self.game.set_window_visible(test) #True for testing purpose
@@ -92,11 +93,10 @@ class VizdoomEnv(gym.Env):
 
         self.game.init()
 
-        if self.is_multiplayer:
-            self.game_variables = [self.game.get_game_variable(vzd.GameVariable.HEALTH),
-                                   self.game.get_game_variable(vzd.GameVariable.HITCOUNT),
-                                   self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO),
-                                   self.game.get_game_variable(vzd.GameVariable.FRAGCOUNT)]
+        self.game_variables = [self.game.get_game_variable(vzd.GameVariable.HEALTH),
+                               self.game.get_game_variable(vzd.GameVariable.HITCOUNT),
+                               self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO),
+                               self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)]
 
         self.state = None
         self.window_surface = None
@@ -144,11 +144,16 @@ class VizdoomEnv(gym.Env):
         else:
             act[action] = 1
         reward = self.game.make_action(act, self.frame_skip)
-        if self.is_multiplayer:
+
+        singelplayer_use_multi_reward = self.level.split('\\')[-1] == 'multi_single.cfg'
+        if self.is_multiplayer or singelplayer_use_multi_reward:
             reward = self.multiplayer_reward()
 
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
+
+        #if reward != 0:
+        #    print(reward)
 
         return self.__collect_observations(), reward, done, {} #Only return RGB variant
 
@@ -159,7 +164,7 @@ class VizdoomEnv(gym.Env):
         new_health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
         new_hits = self.game.get_game_variable(vzd.GameVariable.HITCOUNT)
         new_ammo = self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO)
-        new_frags = self.game.get_game_variable(vzd.GameVariable.FRAGCOUNT)
+        new_frags = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
 
         if old_health > new_health and new_health != 0:
             reward -= 20

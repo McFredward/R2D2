@@ -1,6 +1,7 @@
 
 game_name = 'Vizdoom'
-env_type = 'BasicDeathmatch-v0'
+env_type = 'SingleDeathmatch-v0'
+#env_type = 'BasicDeathmatch-v0'
 #env_type = 'BasicWithAttack-v0'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
 #save_dir = '/data/lissek/R2D2/models'
@@ -37,9 +38,11 @@ alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
 
 #Multiplayer related
-multiplayer = True
-num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
+multiplayer = False
+num_players = 1 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
+#if singleplayer:
+use_multiplayer_reward = True
 
 # sequence setting
 burn_in_steps = 40 # <-- GEN
