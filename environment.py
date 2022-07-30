@@ -81,13 +81,20 @@ class WarpFrame(gym.ObservationWrapper):
 
 def create_env(env_name=config.game_name+config.env_type, clip_rewards=True,multi_conf="",is_host =False,testing=False,port=5060,num_players=config.num_players,name='AI'):
 
-    env = gym.make(env_name,frame_skip=config.frame_skip,client_args=multi_conf,host=is_host,num_players=num_players,test=testing,port=port,player_name=name)
+    if env_name == "CartPole":
+        env = gym.make('CartPole-v1')#, obs_type='grayscale', frameskip=4, repeat_action_probability=0, full_action_space=False)
 
-    env = WarpFrame(env)
+        env = WarpFrame(env)
+        env = NoopResetEnv(env)
 
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    #if noop_start:
-    #    env = NoopResetEnv(env)
+    else:
+        env = gym.make(env_name,frame_skip=config.frame_skip,client_args=multi_conf,host=is_host,num_players=num_players,test=testing,port=port,player_name=name)
+
+        env = WarpFrame(env)
+
+        if clip_rewards:
+            env = ClipRewardEnv(env)
+        #if noop_start:
+        #    env = NoopResetEnv(env)
 
     return env

@@ -1,6 +1,6 @@
 
 game_name = 'CartPole'
-env_type = 'CartPole-v1'
+env_type = '-v1'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
 save_dir = 'models/cartpole/'
 frame_stack = 4
