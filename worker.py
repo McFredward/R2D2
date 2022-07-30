@@ -138,7 +138,8 @@ class ReplayBuffer:
             batch_hidden = self.hidden_buf[block_idxes, sequence_idxes]
 
             for block_idx, sequence_idx, burn_in_step, learning_step, forward_step  in zip(block_idxes, sequence_idxes, burn_in_steps, learning_steps, forward_steps):
-                assert sequence_idx <= self.seq_pre_block_buf[block_idx].item(), 'index is {} but size is {}'.format(sequence_idx, self.seq_pre_block_buf[block_idx])
+                if sequence_idx >= self.self.seq_pre_block_buf[block_idx].item(): continue
+                assert sequence_idx < self.seq_pre_block_buf[block_idx].item(), 'index is {} but size is {}'.format(sequence_idx, self.seq_pre_block_buf[block_idx])
 
                 start_idx = self.burn_in_steps[block_idx, 0]+np.sum(self.learning_steps[block_idx, :sequence_idx]).item()
 
