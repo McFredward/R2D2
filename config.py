@@ -18,13 +18,13 @@ target_net_update_interval = 200 # <--GEN
 gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 
 #Prioritized Replaybuffer
-prio_exponent = 0#0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
-importance_sampling_exponent = 0#Bias regularization because of Prioritization | 0.6 <--GEN
+prio_exponent = 0.9#0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
+importance_sampling_exponent = 0.6#Bias regularization because of Prioritization | 0.6 <--GEN
 
 training_steps = 5000
 buffer_capacity = 50000 #<-- GEN
-max_episode_steps = 18000
-actor_update_interval = 40 #<-- Vielleicht GEN
+max_episode_steps = 15000
+actor_update_interval = 25 #<-- Vielleicht GEN
 block_length = 400  # cut one episode to numbers of blocks to improve the buffer space utilization
 
 amp = False # mixed precision training
