@@ -1,10 +1,8 @@
 
-game_name = 'Vizdoom'
-env_type = 'BasicDeathmatch-v0'
-#env_type = 'BasicWithAttack-v0'
+game_name = 'CartPole'
+env_type = 'CartPole-v1'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
-#save_dir = '/data/lissek/R2D2/models'
-save_dir = 'models'
+save_dir = 'models/cartpole/'
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM <-- GEN
 frame_skip = 1 #TODO: Angucken | doch ganz interessant?
@@ -37,7 +35,7 @@ alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
 
 #Multiplayer related
-multiplayer = True
+multiplayer = False
 num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
 
