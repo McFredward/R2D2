@@ -85,7 +85,7 @@ def create_env(env_name=config.game_name+config.env_type, clip_rewards=True,mult
         env = gym.make('CartPole-v1')#, obs_type='grayscale', frameskip=4, repeat_action_probability=0, full_action_space=False)
 
         env = WarpFrame(env)
-        env = NoopResetEnv(env)
+        #env = NoopResetEnv(env)
 
     else:
         env = gym.make(env_name,frame_skip=config.frame_skip,client_args=multi_conf,host=is_host,num_players=num_players,test=testing,port=port,player_name=name)
