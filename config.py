@@ -32,7 +32,7 @@ block_length = 400  # cut one episode to numbers of blocks to improve the buffer
 
 amp = False # mixed precision training
 
-num_actors = 2#10 # <-- NOT GEN
+num_actors = 5 #10 # <-- NOT GEN
 base_eps = 0.4 #epsilon-greedy-strategy | TODO: Mal angucken ob sinnvoll als GEN| Fix oder angepasst?
 alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
