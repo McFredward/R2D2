@@ -53,8 +53,8 @@ class VizdoomEnv(gym.Env):
         self.level = level
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        self.game.set_window_visible(test) #True for testing purpose
-        #self.game.set_window_visible(True)
+        #self.game.set_window_visible(test) #True for testing purpose
+        self.game.set_window_visible(True)
 
         if test:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
@@ -75,7 +75,6 @@ class VizdoomEnv(gym.Env):
                 "+sv_noautoaim 1 "  # Autoaim is disabled for all players.
                 "+sv_respawnprotect 1 "  # Players will be invulnerable for two second after spawning.
                 "+sv_spawnfarthest 1 "  # Players will be spawned as far as possible from any other players.
-                "+sv_nocrouch 1 "  # Disables crouching.
                 "+viz_respawn_delay 10 "  # Sets delay between respawns (in seconds, default is 0).
                 "+viz_nocheat 1")  # Disables depth and labels buffer and the ability to use commands that could interfere with multiplayer game.
             else:

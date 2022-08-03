@@ -21,8 +21,8 @@ target_net_update_interval = 2000 # <--GEN
 gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 
 #Prioritized Replaybuffer
-prio_exponent = 0#0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
-importance_sampling_exponent = 0#Bias regularization because of Prioritization | 0.6 <--GEN
+prio_exponent = 0.9 #0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
+importance_sampling_exponent = 0.6 #Bias regularization because of Prioritization | 0.6 <--GEN
 
 training_steps = 500000
 buffer_capacity = 500000 #<-- GEN
