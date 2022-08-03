@@ -53,8 +53,8 @@ class VizdoomEnv(gym.Env):
         self.level = level
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        #self.game.set_window_visible(test) #True for testing purpose
-        self.game.set_window_visible(True)
+        self.game.set_window_visible(test) #True for testing purpose
+        #self.game.set_window_visible(True)
 
         if test:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
