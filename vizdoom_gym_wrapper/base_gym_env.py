@@ -8,6 +8,7 @@ import pygame
 import vizdoom.vizdoom as vzd
 import random
 from filelock import FileLock
+import os
 
 # A fixed set of colors for each potential label
 # for rendering an image.
@@ -55,8 +56,8 @@ class VizdoomEnv(gym.Env):
         self.level = level
         self.game = vzd.DoomGame()
         self.game.load_config(level)
-        #self.game.set_window_visible(test) #True for testing purpose
-        self.game.set_window_visible(True)
+        self.game.set_window_visible(test) #True for testing purpose
+        #self.game.set_window_visible(True)
         self.lock = FileLock('_vizdoom.ini.lock')
 
         if test:
@@ -148,7 +149,7 @@ class VizdoomEnv(gym.Env):
             act[action] = 1
         reward = self.game.make_action(act, self.frame_skip)
 
-        singelplayer_use_multi_reward = self.level.split('\\')[-1] == 'multi_single.cfg'
+        singelplayer_use_multi_reward = os.path.normpath(self.level).split(os.sep)[-1] == 'multi_single.cfg'
         if self.is_multiplayer or singelplayer_use_multi_reward:
             reward = self.multiplayer_reward()
 
