@@ -55,7 +55,7 @@ use_dueling = True #<-- GEN
 hidden_dim = 512 #<-- GEN
 cnn_out_dim = 1024 #<-- GEN
 
-render = False
+render = True
 save_plot = True
 test_epsilon = 0.01
 

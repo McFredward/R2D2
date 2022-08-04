@@ -92,7 +92,10 @@ def test_one_case(args):
 def play(checkpoint,args,num_done,rounds=10,client_args="",host=False,port=5060): #-1 for the last snapshot
 
     env_name = args.env_name
+    render = config.render
+
     if "CartPole" in env_name:
+        num_player = 0
         env = create_env(env_name=env_name, clip_rewards=False, testing=True, multi_conf=client_args)
     else:
         num_player = int(checkpoint.split('.')[0][-1])
@@ -103,7 +106,11 @@ def play(checkpoint,args,num_done,rounds=10,client_args="",host=False,port=5060)
     network.share_memory()
 
     #file = directory+"/Vizdoom" + str(checkpoint) + ".pth"
-    state_dict, _, _ = torch.load(checkpoint)
+    if torch.cuda.is_available():
+        state_dict, _, _ = torch.load(checkpoint)
+    else:
+        state_dict, _, _ = torch.load(checkpoint, map_location=torch.device('cpu'))
+
     network.load_state_dict(state_dict)
     print("Loaded "+str(args.file.split('/')[-1]))
     # ---Test trained network---
@@ -112,6 +119,10 @@ def play(checkpoint,args,num_done,rounds=10,client_args="",host=False,port=5060)
         reward = test_one_case((network,env))
         print("reward P{} = {:.3f}".format(num_player+1,reward))
         sum_reward += reward
+        if render:
+            env.reset()
+            for t in range(200):
+                env.render()
     print("mean reward = {:.3f}".format(sum_reward / rounds))
     num_done[0] += 1
 
@@ -121,7 +132,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--file_path", dest='file',type=str)
     parser.add_argument('--env_name', dest='env_name', default=config.game_name+config.env_type)
-    parser.add_argument("--multiplayer", action='store_true')
+    parser.add_argument("--multiplayer", action='store_true', default=False)
     parser.add_argument("--num_player", dest='num_player', default=-1)
     parser.add_argument("--num_rounds", dest="num_rounds", type=int, default=30)
     args = parser.parse_args()

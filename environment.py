@@ -78,7 +78,7 @@ class WarpFrame(gym.ObservationWrapper):
 def create_env(env_name=config.game_name+config.env_type, clip_rewards=True,multi_conf="",is_host =False,testing=False,port=5060,num_players=config.num_players,name='AI'):
 
     if config.game_name == "CartPole":
-        env = gym.make('CartPole-v1')#, obs_type='grayscale', frameskip=4, repeat_action_probability=0, full_action_space=False)
+        env = gym.make('CartPole' + config.env_type)
 
         env = WarpFrame(env)
         #env = NoopResetEnv(env)
