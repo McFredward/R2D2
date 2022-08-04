@@ -5,7 +5,7 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--file_path", dest='file', default='train.log',type=str)
+parser.add_argument("--file_path", dest='file', default=os.getcwd(),type=str)
 parser.add_argument("--show_all", action='store_true')
 parser.add_argument("--max_time", dest='max_time', default=-1,type=int)
 parser.add_argument("--loss_interpolation", action='store_true')

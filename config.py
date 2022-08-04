@@ -1,6 +1,8 @@
 
 game_name = 'CartPole'
 env_type = '-v1'
+#env_type = 'BasicDeathmatch-v0'
+#env_type = 'BasicWithAttack-v0'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
 save_dir = 'models/cartpole/'
 #save_dir = '/data/lissek/R2D2/cartpole'
@@ -19,8 +21,8 @@ target_net_update_interval = 200 # <--GEN
 gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 
 #Prioritized Replaybuffer
-prio_exponent = 0.9#0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
-importance_sampling_exponent = 0.6#Bias regularization because of Prioritization | 0.6 <--GEN
+prio_exponent = 0.9 # 0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
+importance_sampling_exponent = 0.6 # Bias regularization because of Prioritization | 0.6 <--GEN
 
 training_steps = 50000
 buffer_capacity = 50000 #<-- GEN
@@ -30,7 +32,7 @@ block_length = 40  # cut one episode to numbers of blocks to improve the buffer 
 
 amp = False # mixed precision training
 
-num_actors = 2#10 # <-- NOT GEN
+num_actors = 10 #10 # <-- NOT GEN
 base_eps = 0.4 #epsilon-greedy-strategy | TODO: Mal angucken ob sinnvoll als GEN| Fix oder angepasst?
 alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
@@ -39,6 +41,8 @@ log_interval = 20
 multiplayer = False
 num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
+#if singleplayer:
+use_multiplayer_reward = True
 
 # sequence setting
 burn_in_steps = 40 # <-- GEN

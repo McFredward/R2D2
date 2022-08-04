@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 import warnings
 
@@ -6,6 +7,8 @@ import numpy as np
 import pygame
 import vizdoom.vizdoom as vzd
 import random
+from filelock import FileLock
+import os
 
 # A fixed set of colors for each potential label
 # for rendering an image.
@@ -50,10 +53,12 @@ class VizdoomEnv(gym.Env):
         self.is_multiplayer = len(client_args) > 0 or host
 
         # init game
+        self.level = level
         self.game = vzd.DoomGame()
         self.game.load_config(level)
         self.game.set_window_visible(test) #True for testing purpose
         #self.game.set_window_visible(True)
+        self.lock = FileLock('_vizdoom.ini.lock')
 
         if test:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
@@ -74,7 +79,6 @@ class VizdoomEnv(gym.Env):
                 "+sv_noautoaim 1 "  # Autoaim is disabled for all players.
                 "+sv_respawnprotect 1 "  # Players will be invulnerable for two second after spawning.
                 "+sv_spawnfarthest 1 "  # Players will be spawned as far as possible from any other players.
-                "+sv_nocrouch 1 "  # Disables crouching.
                 "+viz_respawn_delay 10 "  # Sets delay between respawns (in seconds, default is 0).
                 "+viz_nocheat 1")  # Disables depth and labels buffer and the ability to use commands that could interfere with multiplayer game.
             else:
@@ -90,13 +94,13 @@ class VizdoomEnv(gym.Env):
             warnings.warn(f"Detected screen format {screen_format.name}. Only RGB24 is supported in the Gym wrapper. Forcing RGB24.")
             self.game.set_screen_format(vzd.ScreenFormat.RGB24)
 
-        self.game.init()
+        with self.lock:
+            self.game.init()
 
-        if self.is_multiplayer:
-            self.game_variables = [self.game.get_game_variable(vzd.GameVariable.HEALTH),
-                                   self.game.get_game_variable(vzd.GameVariable.HITCOUNT),
-                                   self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO),
-                                   self.game.get_game_variable(vzd.GameVariable.FRAGCOUNT)]
+        self.game_variables = [self.game.get_game_variable(vzd.GameVariable.HEALTH),
+                               self.game.get_game_variable(vzd.GameVariable.HITCOUNT),
+                               self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO),
+                               self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)]
 
         self.state = None
         self.window_surface = None
@@ -144,11 +148,16 @@ class VizdoomEnv(gym.Env):
         else:
             act[action] = 1
         reward = self.game.make_action(act, self.frame_skip)
-        if self.is_multiplayer:
+
+        singelplayer_use_multi_reward = os.path.normpath(self.level).split(os.sep)[-1] == 'multi_single.cfg'
+        if self.is_multiplayer or singelplayer_use_multi_reward:
             reward = self.multiplayer_reward()
 
         self.state = self.game.get_state()
         done = self.game.is_episode_finished()
+
+        #if reward != 0:
+        #    print(reward)
 
         return self.__collect_observations(), reward, done, {} #Only return RGB variant
 
@@ -159,7 +168,7 @@ class VizdoomEnv(gym.Env):
         new_health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
         new_hits = self.game.get_game_variable(vzd.GameVariable.HITCOUNT)
         new_ammo = self.game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO)
-        new_frags = self.game.get_game_variable(vzd.GameVariable.FRAGCOUNT)
+        new_frags = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
 
         if old_health > new_health and new_health != 0:
             reward -= 20
