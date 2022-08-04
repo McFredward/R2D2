@@ -90,8 +90,13 @@ def test_one_case(args):
 
 @ray.remote(num_cpus=1)
 def play(checkpoint,args,num_done,rounds=10,client_args="",host=False,port=5060): #-1 for the last snapshot
-    num_player = checkpoint.split('.')[0][-1]
-    env = create_env(env_name=args.env_name, clip_rewards=False,testing=True,multi_conf=client_args,is_host=host,port=port,num_players=args.num_player,name='Player_'+num_player)
+
+    env_name = args.env_name
+    if "CartPole" in env_name:
+        env = create_env(env_name=env_name, clip_rewards=False, testing=True, multi_conf=client_args)
+    else:
+        num_player = checkpoint.split('.')[0][-1]
+        env = create_env(env_name=env_name, clip_rewards=False,testing=True,multi_conf=client_args,is_host=host,port=port,num_players=args.num_player,name='Player_'+num_player)
 
     network = Network(env.action_space.n)
     network.to(device)
