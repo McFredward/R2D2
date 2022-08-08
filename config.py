@@ -1,4 +1,4 @@
-
+CUDA_VISIBLE_DEVICES = "0,3"
 game_name = 'Vizdoom'
 #env_type = 'SingleDeathmatch-v0'
 env_type = 'BasicDeathmatch-v0'
