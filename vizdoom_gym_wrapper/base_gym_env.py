@@ -58,7 +58,7 @@ class VizdoomEnv(gym.Env):
         self.game.load_config(level)
         self.game.set_window_visible(test) #True for testing purpose
         #self.game.set_window_visible(True)
-        self.lock = FileLock('_vizdoom.ini.lock')
+        #self.lock = FileLock('_vizdoom.ini.lock')
 
         if test:
             self.game.set_mode(vzd.Mode.ASYNC_PLAYER)
@@ -94,8 +94,9 @@ class VizdoomEnv(gym.Env):
             warnings.warn(f"Detected screen format {screen_format.name}. Only RGB24 is supported in the Gym wrapper. Forcing RGB24.")
             self.game.set_screen_format(vzd.ScreenFormat.RGB24)
 
-        with self.lock:
-            self.game.init()
+        #with self.lock:
+        #    self.game.init()
+        self.game.init()
 
         self.game_variables = [self.game.get_game_variable(vzd.GameVariable.HEALTH),
                                self.game.get_game_variable(vzd.GameVariable.HITCOUNT),

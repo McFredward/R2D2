@@ -1,9 +1,9 @@
 
 game_name = 'Vizdoom'
-env_type = 'SingleDeathmatch-v0'
-#env_type = 'BasicDeathmatch-v0'
+#env_type = 'SingleDeathmatch-v0'
+env_type = 'BasicDeathmatch-v0'
 #env_type = 'BasicWithAttack-v0'
-pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
+pretrain = "multi_pretrain.pth" #name of the pretrain file in the root. No pretrain if empty string
 #save_dir = '/data/lissek/R2D2/models'
 save_dir = 'models'
 frame_stack = 4
@@ -32,17 +32,15 @@ block_length = 400  # cut one episode to numbers of blocks to improve the buffer
 
 amp = False # mixed precision training
 
-num_actors = 10 #10 # <-- NOT GEN
+num_actors = 2 #10 # <-- NOT GEN
 base_eps = 0.4 #epsilon-greedy-strategy | TODO: Mal angucken ob sinnvoll als GEN| Fix oder angepasst?
 alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
 
 #Multiplayer related
-multiplayer = False
-num_players = 1 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
+multiplayer = True
+num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
-#if singleplayer:
-use_multiplayer_reward = True
 
 # sequence setting
 burn_in_steps = 40 # <-- GEN
