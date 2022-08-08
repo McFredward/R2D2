@@ -19,6 +19,7 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 
 
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
+    os.environ["CUDA_VISIBLE_DEVICES"] = config.CUDA_VISIBLE_DEVICES
     print(f'test1: CUDA_VISIBLE_DEVICES={os.environ.get("CUDA_VISIBLE_DEVICES", "<none>")}')
     ray.init()
     print(f'test2: CUDA_VISIBLE_DEVICES={os.environ.get("CUDA_VISIBLE_DEVICES", "<none>")}')
