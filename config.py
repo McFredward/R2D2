@@ -1,4 +1,4 @@
-
+CUDA_VISIBLE_DEVICES = "0,3"
 game_name = 'CartPole'
 env_type = '-v1'
 #env_type = 'BasicDeathmatch-v0'
@@ -32,17 +32,19 @@ block_length = 40  # cut one episode to numbers of blocks to improve the buffer 
 
 amp = False # mixed precision training
 
-num_actors = 10 #10 # <-- NOT GEN
+num_actors = 2 #10 # <-- NOT GEN
 base_eps = 0.4 #epsilon-greedy-strategy | TODO: Mal angucken ob sinnvoll als GEN| Fix oder angepasst?
 alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
 
 #Multiplayer related
+<<<<<<< HEAD
 multiplayer = False
+=======
+multiplayer = True
+>>>>>>> 21d53cba73e60c772ce58bb00c9dfeebed963311
 num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
-#if singleplayer:
-use_multiplayer_reward = True
 
 # sequence setting
 burn_in_steps = 40 # <-- GEN

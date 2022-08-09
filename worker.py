@@ -258,7 +258,7 @@ class Learner:
         self.player_idx = player_idx
         self.online_net = Network(create_env().action_space.n)
         if pretrain_file != "":
-            self.online_net.load_state_dict(torch.load(os.getcwd()+"/"+pretrain_file)[0])
+            self.online_net.load_state_dict(torch.load(pretrain_file)[0])
 
         self.online_net.cuda()
         self.online_net.train()
