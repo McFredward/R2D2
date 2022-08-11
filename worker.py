@@ -252,7 +252,8 @@ def caculate_mixed_td_errors(td_error, learning_steps):
 class Learner:
     def __init__(self,player_idx : int, buffer: ReplayBuffer, pretrain_file = "", game_name: str = config.game_name, grad_norm: int = config.grad_norm,
                 lr: float = config.lr, eps:float = config.eps, amp: bool = config.amp,
-                target_net_update_interval: int = config.target_net_update_interval, save_interval: int = config.save_interval):
+                target_net_update_interval: int = config.target_net_update_interval, save_interval: int = config.save_interval,
+                use_double: bool = config.use_double):
 
         self.game_name = game_name
         self.player_idx = player_idx
@@ -274,6 +275,8 @@ class Learner:
         self.target_net_update_interval = target_net_update_interval
         self.save_interval = save_interval
         self.amp = amp
+
+        self.use_double = use_double
 
         self.batched_data = []
 
@@ -331,8 +334,11 @@ class Learner:
                 batch_last_action = batch_last_action.float()
 
                 # double q learning
-                batch_action_ = self.online_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).argmax(1).unsqueeze(1)
-                batch_q_ = self.target_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).gather(1, batch_action_).squeeze(1)
+                if (self.use_double):
+                    batch_action_ = self.online_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).argmax(1).unsqueeze(1)
+                    batch_q_ = self.target_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).gather(1, batch_action_).squeeze(1)
+                else:
+                    batch_q_ = self.target_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps)
 
                 target_q = self.value_rescale(batch_n_step_reward + batch_n_step_gamma * self.inverse_value_rescale(batch_q_))
                 # target_q = batch_n_step_reward + batch_n_step_gamma * batch_q_
