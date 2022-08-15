@@ -5,6 +5,7 @@ import numpy as np
 import ray
 from worker import Learner, Actor, ReplayBuffer
 import config
+import os
 from vizdoom import scenarios_path
 
 torch.manual_seed(0)
@@ -18,34 +19,51 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 
 
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
+    os.environ["CUDA_VISIBLE_DEVICES"] = config.CUDA_VISIBLE_DEVICES
     ray.init()
+    num_players = config.num_players if config.multiplayer else 1
 
-    buffer = ReplayBuffer.remote()
-    learner = Learner.remote(buffer,config.pretrain)
+    #instance = (buffer,learner,actors)
+    instances = []
+    for player in range(num_players):
 
-    multi_conf = ""
-    if config.multiplayer:
-        host_actor = Actor.remote(get_epsilon(0), learner, buffer, multi_conf, True,config.pretrain)
-        actors = [host_actor] + [Actor.remote(get_epsilon(i), learner, buffer, "127.0.0.1:5060",False,config.pretrain) for i in range(1,num_actors)]
-    else:
-        actors = [Actor.remote(get_epsilon(i), learner, buffer, multi_conf,False,config.pretrain) for i in range(num_actors)]
+        buffer = ReplayBuffer.remote(player)
+        learner = Learner.remote(player,buffer,config.pretrain)
 
-    for actor in actors:
-        actor.run.remote()
+        if config.multiplayer:
+            #the first player is host in all games
+            if player == 0:
+                actors = [Actor.remote(get_epsilon(i), learner, buffer, "",True,config.pretrain,config.portlist[i]) for i in range(num_actors)]
+            else:
+                actors = [Actor.remote(get_epsilon(i), learner, buffer, "127.0.0.1:"+str(config.portlist[i]),False,config.pretrain) for i in range(num_actors)]
+        else:
+            actors = [Actor.remote(get_epsilon(i), learner, buffer, "",False,config.pretrain) for i in range(num_actors)]
+
+        for actor in actors:
+            actor.run.remote()
+        instance = (buffer,learner,actors)
+        instances.append(instance)
+
+        time.sleep(5) #Give the host time to start the game. IMPORTANT
 
     while not ray.get(buffer.ready.remote()):
         time.sleep(log_interval)
-        ray.get(buffer.log.remote(log_interval))
-        print()
+        for player in range(num_players):
+            print("Player",player)
+            ray.get(instances[player][0].log.remote(log_interval))
+            print()
 
     print('start training')
-    learner.run.remote()
+    for player in range(num_players):
+        instances[player][1].run.remote() #starting learners
 
     done = False
     while not done:
         time.sleep(log_interval)
-        done = ray.get(buffer.log.remote(log_interval))
-        print()
+        for player in range(num_players):
+            print("Player",player)
+            ray.get(instances[player][0].log.remote(log_interval))
+            print()
 
 if __name__ == '__main__':
 

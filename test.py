@@ -10,7 +10,8 @@ from environment import create_env
 import config
 import ray
 import time
-import vizdoom as vzd
+import sys
+import argparse
 device = torch.device('cpu')
 torch.set_num_threads(4)
 
@@ -88,57 +89,55 @@ def test_one_case(args):
     return sum_reward
 
 @ray.remote(num_cpus=1)
-def play(rounds=10,checkpoint=-1,client_args="",host=False,num_done=0): #-1 for the last snapshot
-    env = create_env(noop_start=False, clip_rewards=False,testing=True,multi_conf=client_args,is_host=host)
-    #load game again to change options
-    #env.game.set_window_visible(False)
-    #env.game.set_mode(vzd.Mode.ASYNC_PLAYER)
-    #env.frame_skip = 1
-    #env.game.init()
+def play(checkpoint,args,num_done,rounds=10,client_args="",host=False,port=5060): #-1 for the last snapshot
+    num_player = int(checkpoint.split('.')[0][-1])
+    env = create_env(env_name=args.env_name, clip_rewards=False,testing=True,multi_conf=client_args,is_host=host,port=port,num_players=args.num_player,name='Player_'+str(num_player))
 
     network = Network(env.action_space.n)
     network.to(device)
     network.share_memory()
 
-    checkpoints = []
-    checkpoint_nums = []
-    directory = os.getcwd() + "/models"
-    for filename in os.listdir(directory):
-        f = os.path.join(directory, filename)
-        if os.path.isfile(f):
-            checkpoints.append(f)
-            checkpoint_nums.append(int(f.split('.')[0].split('m')[-1]))
-
-    if checkpoint == -1:
-        checkpoint = max(checkpoint_nums)
-    assert checkpoint in checkpoint_nums, "Unknown checkpoint number"
-
-    file = directory+"/Vizdoom" + str(checkpoint) + ".pth"
-    state_dict, _, _ = torch.load(file)
+    #file = directory+"/Vizdoom" + str(checkpoint) + ".pth"
+    state_dict, _, _ = torch.load(checkpoint)
     network.load_state_dict(state_dict)
-    print("Loaded "+str(file.split('/')[-1]))
+    print("Loaded "+str(args.file.split('/')[-1]))
     # ---Test trained network---
     sum_reward = 0
     for i in range(rounds):
         reward = test_one_case((network,env))
-        print("reward = {:.3f}".format(reward))
+        print("reward P{} = {:.3f}".format(num_player+1,reward))
         sum_reward += reward
     print("mean reward = {:.3f}".format(sum_reward / rounds))
-    num_done += 1
+    num_done[0] += 1
 
 
 if __name__ == '__main__':
-    
-    #test()
-    if not config.multiplayer:
-        play(30)
-    else:
-        num_done = 0
-        play.remote(10000,client_args="",host=True,num_done=num_done)
-        for actor in range(1,config.num_actors):
-            play.remote(10000,client_args="127.0.0.1:5029",host=False,num_done=num_done)
 
-        while num_done < config.num_actors:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file_path", dest='file',type=str)
+    parser.add_argument('--env_name', dest='env_name', default=config.game_name+config.env_type)
+    parser.add_argument("--multiplayer", action='store_true')
+    parser.add_argument("--num_player", dest='num_player', default=-1)
+    parser.add_argument("--num_rounds", dest="num_rounds", type=int, default=30)
+    args = parser.parse_args()
+
+    num_done = [0]
+    if not args.multiplayer:
+        play.remote(args.file,args,num_done,args.num_rounds)
+
+        while num_done[0] < 1:
+            time.sleep(config.log_interval)
+
+    else:
+        checkpoints = [os.path.join(args.file, filename) for filename in os.listdir(args.file) if os.path.isfile(os.path.join(args.file, filename)) and filename.split('.')[-1] == 'pth']
+        if args.num_player == -1:
+            args.num_player = len(checkpoints)
+
+        play.remote(checkpoints[0],args,num_done,10000,client_args="",host=True,port=5060)
+        for num_player in range(1,args.num_player):
+            play.remote(checkpoints[num_player],args,num_done,10000,client_args="127.0.0.1:5060",host=False)
+
+        while num_done[0] < args.num_player:
             time.sleep(config.log_interval)
 
 
