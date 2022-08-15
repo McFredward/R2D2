@@ -38,7 +38,7 @@ alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
 
 #Multiplayer related
-multiplayer = True
+multiplayer = False
 num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
 
