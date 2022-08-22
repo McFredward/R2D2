@@ -65,7 +65,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
 def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_actors):
 
-    buffer = ReplayBuffer.remote(batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
+    buffer = ReplayBuffer.remote(conf["player_idx"], batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
     learner = Learner.remote(conf["player_idx"], buffer=buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
     if config.multiplayer:
