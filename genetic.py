@@ -83,7 +83,7 @@ def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_ac
     return [buffer, learner, actors, conf]
 
 
-def generate_children(agent_confs, parent_indexes, elite_index):
+def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index):
     # Generate children from the best performing agents
 
     children_agents = []
@@ -101,7 +101,7 @@ def generate_children(agent_confs, parent_indexes, elite_index):
     return children_agents, elite_index
 
 
-def add_elite(agent_confs, sorted_parent_indexes, elite_index=None, only_consider_top_n=10):
+def add_elite(agent_confs: dict, sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=10):
     # Select the elite of agents (best performing)
 
     candidate_elite_index = sorted_parent_indexes[:only_consider_top_n]
@@ -130,7 +130,7 @@ def add_elite(agent_confs, sorted_parent_indexes, elite_index=None, only_conside
     return child_agent
 
 
-def run_agents_n_times(agents, n, num_actors, log_interval):
+def run_agents_n_times(agents: list[list[ReplayBuffer, Learner, list[Actor], dict]], n: int, num_actors: int, log_interval):
     """
     Run the agents one by one
 
@@ -149,7 +149,7 @@ def run_agents_n_times(agents, n, num_actors, log_interval):
     return rewards_agents
 
 
-def avg_score(agent, n, log_interval):
+def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log_interval):
     """
     Run agent
 
@@ -186,7 +186,7 @@ def avg_score(agent, n, log_interval):
     return reward
 
 
-def mutate(conf, mutation_power=0.02):
+def mutate(conf: dict, mutation_power=0.02):
     """
     Mutate the config and create a new Agent based on the mutated config
 
