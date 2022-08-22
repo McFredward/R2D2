@@ -253,11 +253,11 @@ class Learner:
     def __init__(self,player_idx : int, buffer: ReplayBuffer, pretrain_file = "", game_name: str = config.game_name, grad_norm: int = config.grad_norm,
                 lr: float = config.lr, eps:float = config.eps, amp: bool = config.amp,
                 target_net_update_interval: int = config.target_net_update_interval, save_interval: int = config.save_interval,
-                use_double: bool = config.use_double):
+                use_double: bool = config.use_double, frame_skip: int=config.frame_skip, use_dueling: bool = config.use_dueling):
 
         self.game_name = game_name
         self.player_idx = player_idx
-        self.online_net = Network(create_env().action_space.n)
+        self.online_net = Network(create_env().action_space.n, frame_skip=frame_skip, use_dueling=use_dueling)
         if pretrain_file != "":
             self.online_net.load_state_dict(torch.load(pretrain_file)[0])
 
@@ -503,16 +503,17 @@ class LocalBuffer:
 @ray.remote(num_cpus=1)
 class Actor:
     def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str ,port : int = 5060, obs_shape: np.ndarray = config.obs_shape,
-                max_episode_steps: int = config.max_episode_steps, block_length: int = config.block_length):
+                max_episode_steps: int = config.max_episode_steps, block_length: int = config.block_length,
+                frame_skip: int=config.frame_skip, gamma: float = config.gamma, buffer_burn_in_steps: int = config.burn_in_steps, use_dueling: bool = config.use_dueling):
 
-        self.env = create_env(clip_rewards=False,multi_conf=multi_conf,is_host=is_host,port=port)
+        self.env = create_env(clip_rewards=False,multi_conf=multi_conf,is_host=is_host,port=port, frame_skip=frame_skip)
         self.action_dim = self.env.action_space.n
-        self.model = Network(self.env.action_space.n)
+        self.model = Network(self.env.action_space.n, use_dueling=use_dueling)
         self.model.eval()
         if pretrain_file != "":
             self.model.load_state_dict(torch.load(os.getcwd()+"/"+pretrain_file,map_location=torch.device('cpu'))[0])
 
-        self.local_buffer = LocalBuffer(self.action_dim)
+        self.local_buffer = LocalBuffer(self.action_dim, gamma=gamma, burn_in_steps=buffer_burn_in_steps)
 
         self.stacked_obs = torch.empty((1, *obs_shape), dtype=torch.float32)
         self.epsilon = epsilon
