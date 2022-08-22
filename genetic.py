@@ -32,12 +32,13 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     # Initial setup. Used for the base agent.
     start_config = {"batch size": config.batch_size, "prio_exp": config.prio_exponent, "prio_bias": config.importance_sampling_exponent,
                     "lr": config.lr, "dueling": config.use_dueling, "epsilon": config.base_eps, "shape": config.obs_shape,
-                    "frame skip": config.frame_skip, "gamma": config.gamma, "burn in": config.burn_in_steps}
+                    "frame skip": config.frame_skip, "gamma": config.gamma, "burn in": config.burn_in_steps, "player_idx": 0}
 
     # First agent is the same as start config
     agents.append(create_agent_from_config(start_config, multi_conf, num_actors))
 
     for ii in range(NUM_AGENTS - 1):
+        start_config["palyer_idx"] = ii + 1
         agents.append(mutate(start_config))
 
     elite_index = None
@@ -65,7 +66,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_actors):
 
     buffer = ReplayBuffer.remote(batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
-    learner = Learner.remote(buffer=buffer, lr=conf["lr"], use_dueling=conf["dueling"])
+    learner = Learner.remote(conf["player_idx"], buffer=buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
     if config.multiplayer:
         base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, buffer, multi_conf, True, config.pretrain)
@@ -112,6 +113,7 @@ def add_elite(agent_confs, sorted_parent_indexes, elite_index=None, only_conside
     top_elite_index = None
 
     for i in candidate_elite_index:
+        agent_confs[i]["player_idx"] *= 10
         score = avg_score(create_agent_from_config(agent_confs[i]), n=5)
         print("Score for elite cadidiate i ", i, " is ", score)
 
@@ -197,10 +199,13 @@ def mutate(conf, mutation_power=0.02):
     keys = conf.keys()
     values = conf.values()
 
-    conf_vals_to_mutate = np.random.choice([0, 1], size=no_conf_vals, p=[.5, .5])
+    conf_vals_to_mutate = np.random.choice([0, 1], size=no_conf_vals-1, p=[.5, .5])
     new_conf = {}
     for ii in range(no_conf_vals):
-        if conf_vals_to_mutate[ii]:
+        if ii == no_conf_vals-1:
+            # Last entry is player_idx
+            new_conf = conf[keys[ii]] * 100
+        elif conf_vals_to_mutate[ii]:
             new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
 
     return create_agent_from_config(new_conf)
