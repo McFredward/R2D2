@@ -113,7 +113,7 @@ def add_elite(agent_confs, sorted_parent_indexes, elite_index=None, only_conside
     top_elite_index = None
 
     for i in candidate_elite_index:
-        agent_confs[i]["player_idx"] *= 10
+        agent_confs[i]["player_idx"] = int(agent_confs[i]["player_idx"] * 10 + i)
         score = avg_score(create_agent_from_config(agent_confs[i]), n=5)
         print("Score for elite cadidiate i ", i, " is ", score)
 
@@ -204,7 +204,7 @@ def mutate(conf, mutation_power=0.02):
     for ii in range(no_conf_vals):
         if ii == no_conf_vals-1:
             # Last entry is player_idx
-            new_conf = conf[keys[ii]] * 100
+            new_conf = int(conf[keys[ii]] * 100)
         elif conf_vals_to_mutate[ii]:
             new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
 
