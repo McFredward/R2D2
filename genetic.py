@@ -196,8 +196,8 @@ def mutate(conf, mutation_power=0.02):
     """
 
     no_conf_vals = len(conf)
-    keys = conf.keys()
-    values = conf.values()
+    keys = list(conf.keys())
+    values = list(conf.values())
 
     conf_vals_to_mutate = np.random.choice([0, 1], size=no_conf_vals-1, p=[.5, .5])
     new_conf = {}
