@@ -226,7 +226,7 @@ def mutate_value(old_value, mutation_power):
     elif type(old_value) == int:
         new_value = np.round(old_value + np.random.normal(0, 1) * mutation_power)
     elif type(old_value) == float:
-        new_value = old_value + np.random.normal * mutation_power
+        new_value = old_value + np.random.normal(0, 1) * mutation_power
     elif type(old_value) == tuple or type(old_value) == list:
         new_value = (mutate_value(old_value[ii]) for ii in range(len(old_value)))
     else:
