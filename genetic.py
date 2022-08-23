@@ -31,7 +31,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
     # Initial setup. Used for the base agent.
     start_config = {"batch size": int(config.batch_size), "prio_exp": config.prio_exponent, "prio_bias": config.importance_sampling_exponent,
-                    "lr": config.lr, "dueling": config.use_dueling, "epsilon": config.base_eps, "shape": (int(val) for val in config.obs_shape),
+                    "lr": config.lr, "dueling": config.use_dueling, "epsilon": config.base_eps, "shape": config.obs_shape,
                     "frame skip": int(config.frame_skip), "gamma": config.gamma, "burn in": int(config.burn_in_steps), "player_idx": 0}
 
     # First agent is the same as start config
