@@ -65,24 +65,24 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
 def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_actors):
 
-    buffer = ReplayBuffer.remote(conf["player_idx"], batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
-    learner = Learner.remote(conf["player_idx"], buffer=buffer, lr=conf["lr"], use_dueling=conf["dueling"])
+    r_buffer = ReplayBuffer.remote(conf["player_idx"], batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
+    learner = Learner.remote(conf["player_idx"], buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
     if config.multiplayer:
-        base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, buffer, multi_conf, True, config.pretrain,
+        base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, r_buffer, multi_conf, True, config.pretrain,
                                        obs_shape=conf["shape"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
                                        buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"])
-        actors = [base_host_actor] + [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, buffer,
+        actors = [base_host_actor] + [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, r_buffer,
                                                         "127.0.0.1:5029", False, config.pretrain, obs_shape=conf["shape"],
                                                         frame_skip=conf["frame skip"], gamma=conf["gamma"],
                                                         buffer_burn_in_steps=conf["burn in"],
                                                         use_dueling=conf["dueling"]) for i in range(1,num_actors)]
     else:
-        actors = [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, buffer, multi_conf, False,
+        actors = [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, r_buffer, multi_conf, False,
                                config.pretrain, obs_shape=conf["shape"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
                                buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"]) for i in range(num_actors)]
 
-    return [buffer, learner, actors, conf]
+    return [r_buffer, learner, actors, conf]
 
 
 def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index):
@@ -161,7 +161,7 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
     :return:
     """
 
-    buffer = agent[0]
+    r_buffer = agent[0]
     learner = agent[1]
     actors = agent[2]
     conf = agent[3]
@@ -169,9 +169,9 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
     for actor in actors:
         actor.run.remote()
 
-    while not ray.get(buffer.ready.remote()):
+    while not ray.get(r_buffer.ready.remote()):
         time.sleep(log_interval)
-        ray.get(buffer.log.remote(log_interval))
+        ray.get(r_buffer.log.remote(log_interval))
         print()
 
     learner.run.remote()
@@ -179,7 +179,7 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
     done = False
     while not done:
         time.sleep(log_interval)
-        done = ray.get(buffer.log.remote(log_interval))
+        done = ray.get(r_buffer.log.remote(log_interval))
         print()
 
     # Needs implementation
