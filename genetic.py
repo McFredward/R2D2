@@ -69,7 +69,9 @@ def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_ac
     learner = Learner.remote(conf["player_idx"], buffer=buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
     if config.multiplayer:
-        base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, buffer, multi_conf, True, config.pretrain)
+        base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, buffer, multi_conf, True, config.pretrain,
+                                       obs_shape=conf["shape"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
+                                       buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"])
         actors = [base_host_actor] + [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, buffer,
                                                         "127.0.0.1:5029", False, config.pretrain, obs_shape=conf["shape"],
                                                         frame_skip=conf["frame skip"], gamma=conf["gamma"],
@@ -77,8 +79,8 @@ def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_ac
                                                         use_dueling=conf["dueling"]) for i in range(1,num_actors)]
     else:
         actors = [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, buffer, multi_conf, False,
-                                    config.pretrain, obs_shape=conf["shape"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
-                                    buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"]) for i in range(num_actors)]
+                               config.pretrain, obs_shape=conf["shape"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
+                               buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"]) for i in range(num_actors)]
 
     return [buffer, learner, actors, conf]
 
