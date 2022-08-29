@@ -188,7 +188,7 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
     return reward
 
 
-def mutate(conf: dict, mutation_power=0.02):
+def mutate(conf: dict, mutation_power=0.002):
     """
     Mutate the config and create a new Agent based on the mutated config
 
@@ -209,6 +209,8 @@ def mutate(conf: dict, mutation_power=0.02):
             new_conf[keys[ii]] = int(conf[keys[ii]] * 100)
         elif conf_vals_to_mutate[ii]:
             new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
+        else:
+            new_conf[keys[ii]] = values[ii]
 
     return create_agent_from_config(new_conf)
 
