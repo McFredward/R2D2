@@ -262,7 +262,7 @@ class Learner:
 
         self.game_name = game_name
         self.player_idx = player_idx
-        self.online_net = Network(create_env().action_space.n, frame_skip=frame_skip, use_dueling=use_dueling)
+        self.online_net = Network(create_env(frame_skip=frame_skip).action_space.n, use_dueling=use_dueling)
         if pretrain_file != "":
             self.online_net.load_state_dict(torch.load(pretrain_file)[0])
 
