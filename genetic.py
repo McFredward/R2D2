@@ -206,7 +206,7 @@ def mutate(conf: dict, mutation_power=0.02):
     for ii in range(no_conf_vals):
         if ii == no_conf_vals-1:
             # Last entry is player_idx
-            new_conf = int(conf[keys[ii]] * 100)
+            new_conf[keys[ii]] = int(conf[keys[ii]] * 100)
         elif conf_vals_to_mutate[ii]:
             new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
 
