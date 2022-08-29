@@ -57,6 +57,7 @@ class ReplayBuffer:
 
         self.num_episodes = 0
         self.episode_reward = 0
+        self.sum_reward = 0
 
         self.num_training_steps = 0
         self.last_training_steps = 0
@@ -118,6 +119,7 @@ class ReplayBuffer:
             if block[11]:
                 self.episode_reward += block[11]
                 self.num_episodes += 1
+                self.sum_reward += block[11]
 
     def sample_batch(self):
         '''sample one batch of training data'''
@@ -216,6 +218,9 @@ class ReplayBuffer:
             return True
         else:
             return False
+
+    def get_reward(self):
+        return self.sum_reward
 
     def log(self, log_interval):
         self.logger.info(f'buffer size: {np.sum(self.learning_steps)}')

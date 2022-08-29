@@ -103,7 +103,7 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index
     return children_agents, elite_index
 
 
-def add_elite(agent_confs: dict, sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=10):
+def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=10):
     # Select the elite of agents (best performing)
 
     candidate_elite_index = sorted_parent_indexes[:only_consider_top_n]
@@ -182,8 +182,8 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
         done = ray.get(r_buffer.log.remote(log_interval))
         print()
 
-    # Needs implementation
-    reward = ray.get(learner.get_reward.remote())
+    # Buffer stores the reward
+    reward = ray.get(r_buffer.get_reward.remote())
 
     return reward
 
