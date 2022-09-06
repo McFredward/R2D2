@@ -90,9 +90,12 @@ for f, idx in zip(lst,range(len(lst))):
         else:
             ax2.plot(x_loss,loss,color='tab:red',alpha=0.5)
         ax2.tick_params('y',colors='tab:red')
-        if idx%2 == len(lst)//2 - 1:
+        if len(lst) > 1:
+            if idx%2 == len(lst)//2 - 1:
+                ax2.set_ylabel('loss',color='tab:red')
+            if idx%2 == 0:
+                ax2.yaxis.set_ticklabels([])
+        else:
             ax2.set_ylabel('loss',color='tab:red')
-        if idx%2 == 0:
-            ax2.yaxis.set_ticklabels([])
 
 plt.show()
