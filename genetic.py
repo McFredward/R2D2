@@ -30,9 +30,9 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     multi_conf = ""
 
     # Initial setup. Used for the base agent.
-    start_config = {"batch size": int(config.batch_size), "prio_exp": config.prio_exponent, "prio_bias": config.importance_sampling_exponent,
+    start_config = {"prio_exp": config.prio_exponent, "prio_bias": config.importance_sampling_exponent,
                     "lr": config.lr, "dueling": config.use_dueling, "epsilon": config.base_eps,
-                    "frame skip": int(config.frame_skip), "gamma": config.gamma, "burn in": int(config.burn_in_steps), "player_idx": 0}
+                    "player_idx": 0}
 
     # First agent is the same as start config
     agents.append(create_agent_from_config(start_config, multi_conf, num_actors))
@@ -65,22 +65,18 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
 def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_actors):
 
-    r_buffer = ReplayBuffer.remote(conf["player_idx"], batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
+    r_buffer = ReplayBuffer.remote(conf["player_idx"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
     learner = Learner.remote(conf["player_idx"], buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
     if config.multiplayer:
         base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, r_buffer, multi_conf, True, config.pretrain,
-                                       frame_skip=conf["frame skip"], gamma=conf["gamma"],
-                                       buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"])
+                                       use_dueling=conf["dueling"])
         actors = [base_host_actor] + [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, r_buffer,
                                                         "127.0.0.1:5029", False, config.pretrain,
-                                                        frame_skip=conf["frame skip"], gamma=conf["gamma"],
-                                                        buffer_burn_in_steps=conf["burn in"],
                                                         use_dueling=conf["dueling"]) for i in range(1,num_actors)]
     else:
         actors = [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, r_buffer, multi_conf, False,
-                               config.pretrain, frame_skip=conf["frame skip"], gamma=conf["gamma"],
-                               buffer_burn_in_steps=conf["burn in"], use_dueling=conf["dueling"]) for i in range(num_actors)]
+                               config.pretrain, use_dueling=conf["dueling"]) for i in range(num_actors)]
 
     return [r_buffer, learner, actors, conf]
 
