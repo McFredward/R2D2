@@ -1,9 +1,11 @@
 CUDA_VISIBLE_DEVICES = "0,3"
 game_name = 'Vizdoom'
 #env_type = 'SingleDeathmatch-v0'
-env_type = 'BasicDeathmatch-v0'
+#env_type = 'BasicDeathmatch-v0'
 #env_type = 'BasicWithAttack-v0'
-pretrain = "multi_pretrain.pth" #name of the pretrain file in the root. No pretrain if empty string
+env_type = 'Basic-v0'
+#pretrain = "multi_pretrain.pth" #name of the pretrain file in the root. No pretrain if empty string
+pretrain = ""
 #save_dir = '/data/lissek/R2D2/models'
 save_dir = 'models'
 frame_stack = 4
@@ -15,7 +17,7 @@ lr = 1e-4 # <-- GEN
 eps = 1e-3 #Adam optimzer epsilon #TODO: Warum so gross | Adam angucken?
 grad_norm = 40 #maximum value of the total gradient norm, otherwise gradients will be clipped #TODO: Angucken
 batch_size = 128 # <-- GEN
-learning_starts = 10000#50000
+learning_starts = 1000#50000
 save_interval = 1000
 target_net_update_interval = 2000 # <--GEN
 gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
@@ -38,7 +40,7 @@ alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
 
 #Multiplayer related
-multiplayer = True
+multiplayer = False
 num_players = 2 # [Multiplayer ONLY] how many players are fighting inside one game | How many R2D2's
 portlist = [5060 + i for i in range(num_actors)] #One port for each actor inside one player!
 
@@ -50,6 +52,7 @@ seq_len = burn_in_steps + learning_steps + forward_steps
 
 # network setting
 use_dueling = True #<-- GEN
+use_double = False
 hidden_dim = 512 #<-- GEN
 cnn_out_dim = 1024 #<-- GEN
 

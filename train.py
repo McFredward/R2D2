@@ -44,7 +44,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
         instance = (buffer,learner,actors)
         instances.append(instance)
 
-        time.sleep(5) #Give the host time to start the game. IMPORTANT
+        #time.sleep(10) #Give the host time to start the game. IMPORTANT
 
     while not ray.get(buffer.ready.remote()):
         time.sleep(log_interval)

@@ -135,6 +135,10 @@ class VizdoomEnv(gym.Env):
                                         dtype=np.uint8,
                                     )
 
+        #--For checking if the image has frozen because of race conditon -> Deadlock--
+        #self.deadlock_test_succesful = False
+        #self.last_state = np.zeros(1)
+
     def step(self, action):
         assert self.action_space.contains(action), f"{action!r} ({type(action)}) invalid"
         assert self.state is not None, "Call `reset` before using `step` method."
@@ -160,7 +164,28 @@ class VizdoomEnv(gym.Env):
         #if reward != 0:
         #    print(reward)
 
-        return self.__collect_observations(), reward, done, {} #Only return RGB variant
+        state = self.__collect_observations()
+
+        """
+        if np.array_equal(state,self.last_state):
+            print("DEADLOCK")
+
+        self.last_state = state
+
+        #--------
+
+        if not self.deadlock_test_succesful:
+            if self.last_state is None:
+                self.last_state = state
+            else:
+                if not np.array_equal(state,self.last_state):
+                    self.deadlock_test_succesful = True
+                    pass
+                else:
+                    print("DEADLOCK")
+        """
+
+        return state, reward, done, {} #Only return RGB variant
 
     #ACS Script reward is global for all players within the map -> Multiplayer reward must be calculated through game variables
     def multiplayer_reward(self):
