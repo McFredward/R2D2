@@ -1,13 +1,9 @@
 CUDA_VISIBLE_DEVICES = "0,3"
-game_name = 'Vizdoom'
-#env_type = 'SingleDeathmatch-v0'
-#env_type = 'BasicDeathmatch-v0'
-#env_type = 'BasicWithAttack-v0'
-env_type = 'Basic-v0'
-#pretrain = "multi_pretrain.pth" #name of the pretrain file in the root. No pretrain if empty string
-pretrain = ""
-#save_dir = '/data/lissek/R2D2/models'
-save_dir = 'models'
+game_name = 'CartPole'
+env_type = '-v1'
+pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
+save_dir = '/data/lissek/R2D2/cartpole'
+#save_dir = 'models/cartpole/'
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM <-- GEN
 frame_skip = 1 #TODO: Angucken | doch ganz interessant?
@@ -59,4 +55,3 @@ cnn_out_dim = 1024 #<-- GEN
 render = False
 save_plot = True
 test_epsilon = 0.01
-

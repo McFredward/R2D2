@@ -6,7 +6,7 @@ import config
 
 
 class Network(nn.Module):
-    def __init__(self, action_dim, obs_shape=config.obs_shape, hidden_dim=config.hidden_dim, cnn_out_dim=config.cnn_out_dim,dueling=config.use_dueling):
+    def __init__(self, action_dim, obs_shape=config.obs_shape, hidden_dim=config.hidden_dim, cnn_out_dim=config.cnn_out_dim,use_dueling=config.use_dueling):
         super().__init__()
 
         # 84 x 84 input
@@ -15,7 +15,7 @@ class Network(nn.Module):
         self.obs_shape = obs_shape
         self.hidden_dim = hidden_dim
         self.cnn_out_dim = cnn_out_dim
-        self.is_dueling = dueling
+        self.is_dueling = use_dueling
 
         self.max_forward_steps = 5
 
