@@ -2,7 +2,7 @@ CUDA_VISIBLE_DEVICES = "3"
 game_name = 'CartPole'
 env_type = '-v1'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
-save_dir = '/data/lissek/R2D2/genetic/test'
+save_dir = '/data/lissek/R2D2/cartpole/'
 #save_dir = 'models/cartpole/'
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM <-- GEN
@@ -14,7 +14,7 @@ eps = 1e-3 #Adam optimzer epsilon #TODO: Warum so gross | Adam angucken?
 grad_norm = 40 #maximum value of the total gradient norm, otherwise gradients will be clipped #TODO: Angucken
 batch_size = 128 # <-- GEN
 learning_starts = 1000#50000
-save_interval = 1000
+save_interval = 500
 target_net_update_interval = 2000 # <--GEN
 gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 
@@ -22,8 +22,8 @@ gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 prio_exponent = 0.9 #0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
 importance_sampling_exponent = 0.6 #Bias regularization because of Prioritization | 0.6 <--GEN
 
-training_steps = 500000
-buffer_capacity = 500000 #<-- GEN
+training_steps = 100000
+buffer_capacity = 100000 #<-- GEN
 max_episode_steps = 27000
 actor_update_interval = 400 #<-- Vielleicht GEN
 block_length = 400  # cut one episode to numbers of blocks to improve the buffer space utilization
@@ -48,7 +48,7 @@ seq_len = burn_in_steps + learning_steps + forward_steps
 
 # network setting
 use_dueling = True #<-- GEN
-use_double = False
+use_double = True
 hidden_dim = 512 #<-- GEN
 cnn_out_dim = 1024 #<-- GEN
 
