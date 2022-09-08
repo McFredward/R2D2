@@ -49,6 +49,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     for g in range(GENERATIONS):
         rewards = run_agents_n_times(agents, 2, num_actors, log_interval)
 
+        # Top agents (sorted descending)
         sorted_parent_indexes = np.argsort(rewards)[::-1][:TOP_LIMIT]
 
         top_rewards = []
@@ -86,30 +87,39 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index
 
     children_agents = []
 
-    #first take selected parents from sorted_parent_indexes and generate N-1 children
+    # Fill not-top agents with random mutations of top performing agents
     for i in range(len(agent_confs)-1):
+        # Take a random index of a parent
         selected_agent_index = parent_indexes[np.random.randint(len(parent_indexes))]
+        # Mutate the config
         children_agents.append(mutate(agent_confs[selected_agent_index]))
 
-    #now add one elite
-    elite_child = add_elite(agent_confs, parent_indexes, elite_index)
-    children_agents.append(elite_child)
-    elite_index=len(children_agents)-1 #it is the last one
+    # Add one elite
+    # elite_child = add_elite(agent_confs, parent_indexes, elite_index)
+    # children_agents.append(elite_child)
+    # elite_index=len(children_agents)-1 #it is the last one
+
+    # Add best of top to children
+    children_agents.append(agent_confs[parent_indexes[0]])
+    elite_index = parent_indexes[0]
 
     return children_agents, elite_index
 
 
-def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=10):
+def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=1):
     # Select the elite of agents (best performing)
 
+    # Best of the best
     candidate_elite_index = sorted_parent_indexes[:only_consider_top_n]
 
-    if(elite_index is not None):
-        candidate_elite_index = np.append(candidate_elite_index,[elite_index])
+    # Previous elite is also considered
+    if elite_index is not None:
+        candidate_elite_index = np.append(candidate_elite_index, [elite_index])
 
     top_score = None
     top_elite_index = None
 
+    # Compare new elite(s) and previous elite
     for i in candidate_elite_index:
         agent_confs[i]["player_idx"] = int(agent_confs[i]["player_idx"] * 10 + i)
         score = avg_score(create_agent_from_config(agent_confs[i]), n=5)

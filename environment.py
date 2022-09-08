@@ -80,6 +80,13 @@ def create_env(env_name=config.game_name+config.env_type, clip_rewards=True, mul
 
     if config.game_name == "CartPole":
         env = gym.make('CartPole' + config.env_type)
+
+        env = WarpFrame(env)
+
+        if clip_rewards:
+            env = ClipRewardEnv(env)
+        #if noop_start:
+        #    env = NoopResetEnv(env)
     else:
         env = gym.make(env_name,frame_skip=frame_skip,client_args=multi_conf,host=is_host,num_players=num_players,test=testing,port=port,player_name=name)
 
