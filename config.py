@@ -1,8 +1,8 @@
-CUDA_VISIBLE_DEVICES = "0,3"
+CUDA_VISIBLE_DEVICES = "3"
 game_name = 'CartPole'
 env_type = '-v1'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
-save_dir = '/data/lissek/R2D2/cartpole'
+save_dir = '/data/lissek/R2D2/genetic/test'
 #save_dir = 'models/cartpole/'
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM <-- GEN
