@@ -335,10 +335,8 @@ class Learner:
                 if config.use_double:
                     batch_action_ = self.online_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).argmax(1).unsqueeze(1)
                     batch_q_ = self.target_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).gather(1, batch_action_).squeeze(1)
-                    print("test",batch_q_.shape)
                 else:
                     batch_q_ = self.online_net.caculate_q_(batch_obs, batch_last_action, batch_hidden, burn_in_steps, learning_steps, forward_steps).max(1)[0]
-                    print("test1",batch_q_.shape)
 
                 target_q = self.value_rescale(batch_n_step_reward + batch_n_step_gamma * self.inverse_value_rescale(batch_q_))
                 # target_q = batch_n_step_reward + batch_n_step_gamma * batch_q_
