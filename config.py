@@ -13,9 +13,9 @@ lr = 1e-4 # <-- GEN
 eps = 1e-3 #Adam optimzer epsilon #TODO: Warum so gross | Adam angucken?
 grad_norm = 40 #maximum value of the total gradient norm, otherwise gradients will be clipped #TODO: Angucken
 batch_size = 128 # <-- GEN
-learning_starts = 1000#50000
-save_interval = 500
-target_net_update_interval = 2000 # <--GEN
+learning_starts = 100#50000
+save_interval = 40
+target_net_update_interval = 200 # <--GEN
 gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 
 #Prioritized Replaybuffer
@@ -25,8 +25,8 @@ importance_sampling_exponent = 0.6 #Bias regularization because of Prioritizatio
 training_steps = 100000
 buffer_capacity = 100000 #<-- GEN
 max_episode_steps = 27000
-actor_update_interval = 400 #<-- Vielleicht GEN
-block_length = 400  # cut one episode to numbers of blocks to improve the buffer space utilization
+actor_update_interval = 40 #<-- Vielleicht GEN
+block_length = 40  # cut one episode to numbers of blocks to improve the buffer space utilization
 
 amp = False # mixed precision training
 
