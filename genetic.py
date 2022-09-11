@@ -191,6 +191,11 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
     # Buffer stores the reward
     reward = ray.get(r_buffer.get_reward.remote())
 
+    learner.run.cancel()
+    r_buffer.run.cancel()
+    for actor in actors:
+        actor.run.cancel()
+
     return reward
 
 
