@@ -78,6 +78,8 @@ class ReplayBuffer:
         self.burn_in_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
         self.forward_steps = np.zeros((self.num_blocks, self.seq_pre_block), dtype=np.int64)
 
+        self.done = False
+
 
     def __len__(self):
         return np.sum(self.learning_steps).item()
@@ -237,6 +239,11 @@ class ReplayBuffer:
             self.last_training_steps = self.num_training_steps
             self.sum_loss = 0
         self.last_env_steps = self.env_steps
+
+        if self.num_training_steps >= config.training_steps:
+            self.done = True
+
+        return self.done
 
 
 
