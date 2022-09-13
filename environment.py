@@ -46,11 +46,12 @@ class ClipRewardEnv(gym.RewardWrapper):
 
 
 class WarpFrame(gym.ObservationWrapper):
-    def __init__(self, env, width=84, height=84):
+    def __init__(self, env, width=84, height=84,is_cartpole=False):
         """
         Warp frames to 84x84 as done in the Nature paper and later work.
         """
         super().__init__(env)
+        self.is_cartpole = is_cartpole
         self._width = width
         self._height = height
 
@@ -66,7 +67,8 @@ class WarpFrame(gym.ObservationWrapper):
 
     def observation(self, frame):
 
-        #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        if not self.is_cartpole:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
         frame = cv2.resize(
             frame, (self._width, self._height), interpolation=cv2.INTER_AREA
@@ -81,7 +83,7 @@ def create_env(env_name=config.game_name+config.env_type, clip_rewards=True, mul
     if config.game_name == "CartPole":
         env = gym.make('CartPole' + config.env_type)
 
-        env = WarpFrame(env)
+        env = WarpFrame(env,is_cartpole=True)
 
         if clip_rewards:
             env = ClipRewardEnv(env)

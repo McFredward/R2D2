@@ -13,6 +13,16 @@ random.seed(0)
 torch.set_num_threads(1)
 torch.set_grad_enabled(False)
 
+@ray.remote
+class is_running_struct:
+    def __init__(self):
+        self.is_running = True
+    def terminate(self):
+        self.is_running = False
+    def get_is_running(self):
+        return self.is_running
+
+
 def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float = config.alpha, num_actors: int = config.num_actors):
     exponent = 1 + actor_id / (num_actors-1) * alpha
     return base_eps**exponent
@@ -38,16 +48,24 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     agents.append(create_agent_from_config(start_config, multi_conf, num_actors))
 
     for ii in range(NUM_AGENTS - 1):
-        start_config["palyer_idx"] = ii + 1
+        start_config["player_idx"] = ii + 1
         agents.append(mutate(start_config))
 
     elite_index = None
-
     # -- Init done -- start training
+    logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('genetic_logs')
+    logger.addHandler(logging.FileHandler('genetic.log', 'w'))
 
     for g in range(GENERATIONS):
+        print("-----------------------TEST--------------------")
+        logger.info("--- Start Generation No {} ---".format(g))
+        for agent in agents: #print current configs in log
+            logger.info("Agent {}:\n{}".format(agent[3]['player_idx'],str(agent[3])))
+
         rewards = run_agents_n_times(agents, 2, num_actors, log_interval)
+
+        logger.info("Generation No. {} finished! Mutating...".format(g))
 
         # Top agents (sorted descending)
         sorted_parent_indexes = np.argsort(rewards)[::-1][:TOP_LIMIT]
@@ -60,7 +78,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
         logger.info("Top ", TOP_LIMIT, " scores", sorted_parent_indexes)
         logger.info("Rewards for top: ", top_rewards)
 
-        children, elite_index = generate_children([arg[-1] for arg in agents], sorted_parent_indexes, elite_index)
+        children, elite_index = generate_children([arg[3] for arg in agents], sorted_parent_indexes, elite_index)
         agents = children
 
 
@@ -69,17 +87,19 @@ def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_ac
     r_buffer = ReplayBuffer.remote(conf["player_idx"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
     learner = Learner.remote(conf["player_idx"], buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
+    actors_is_running = [is_running_struct.remote() for _ in range(num_actors)]
+
     if config.multiplayer:
-        base_host_actor = Actor.remote(get_epsilon(0, conf["epsilon"]), learner, r_buffer, multi_conf, True, config.pretrain,
+        base_host_actor = Actor.remote(actors_is_running[0],get_epsilon(0, conf["epsilon"]), learner, r_buffer, multi_conf, True, config.pretrain,
                                        use_dueling=conf["dueling"])
-        actors = [base_host_actor] + [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, r_buffer,
+        actors = [base_host_actor] + [Actor.remote(actors_is_running[i],get_epsilon(i, conf["epsilon"]), learner, r_buffer,
                                                         "127.0.0.1:5029", False, config.pretrain,
                                                         use_dueling=conf["dueling"]) for i in range(1,num_actors)]
     else:
-        actors = [Actor.remote(get_epsilon(i, conf["epsilon"]), learner, r_buffer, multi_conf, False,
+        actors = [Actor.remote(actors_is_running[i],get_epsilon(i, conf["epsilon"]), learner, r_buffer, multi_conf, False,
                                config.pretrain, use_dueling=conf["dueling"]) for i in range(num_actors)]
 
-    return [r_buffer, learner, actors, conf]
+    return [r_buffer, learner, actors, conf,actors_is_running]
 
 
 def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index):
@@ -100,12 +120,13 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index
     # elite_index=len(children_agents)-1 #it is the last one
 
     # Add best of top to children
-    children_agents.append(agent_confs[parent_indexes[0]])
+
+    children_agents.append(create_agent_from_config(agent_confs[parent_indexes[0]]))
     elite_index = parent_indexes[0]
 
     return children_agents, elite_index
 
-
+"""
 def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=1):
     # Select the elite of agents (best performing)
 
@@ -122,7 +143,7 @@ def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=
     # Compare new elite(s) and previous elite
     for i in candidate_elite_index:
         agent_confs[i]["player_idx"] = int(agent_confs[i]["player_idx"] * 10 + i)
-        score = avg_score(create_agent_from_config(agent_confs[i]), n=5)
+        score = run_agent(create_agent_from_config(agent_confs[i]), n=5)
         print("Score for elite cadidiate i ", i, " is ", score)
 
         if(top_score is None):
@@ -136,9 +157,9 @@ def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=
 
     child_agent = create_agent_from_config(agent_confs[top_elite_index])
     return child_agent
+"""
 
-
-def run_agents_n_times(agents: list[list[ReplayBuffer, Learner, list[Actor], dict]], n: int, num_actors: int, log_interval):
+def run_agents_n_times(agents, n: int, num_actors: int, log_interval): #agents: list[list[ReplayBuffer, Learner, list[Actor], dict, is_running:_struct]]
     """
     Run the agents one by one
 
@@ -150,27 +171,49 @@ def run_agents_n_times(agents: list[list[ReplayBuffer, Learner, list[Actor], dic
     """
 
     rewards_agents = []
+    #Start all agent master-threads
+    agents_is_running_struct_lst = [is_running_struct.remote() for _ in range(len(agents))]
+    for agent_idx in range(len(agents)):
+        run_agent.remote(agents_is_running_struct_lst[agent_idx],agents[agent_idx], n, log_interval)
 
+    #Wait for all agents to finish
+    still_running = True
+    while still_running:
+        time.sleep(log_interval)
+        still_running = False
+        for agent_idx in range(len(agents)):
+            # Only keeps beeing False if all "is_runnning" from all actors in False
+            is_running = ray.get(agents_is_running_struct_lst[agent_idx].get_is_running.remote())
+            print("still_running = " + str(still_running) + " or " + str(is_running) + " = " + str(
+                still_running or is_running))
+            still_running = still_running or is_running
+
+
+    #Grab the sum reward of all agents
     for agent in agents:
-        rewards_agents.append(avg_score(agent, n, log_interval))
+        # Buffer stores the reward
+        r_buffer = agent[0]
+        rewards_agents.append(ray.get(r_buffer.get_reward.remote()))
 
     return rewards_agents
 
-
-def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log_interval):
+@ray.remote(num_cpus=1)
+def run_agent(agent_is_running_struct,agent, n: int, log_interval): #list[ReplayBuffer, Learner, list[Actor], dict, is_running_struct]
     """
-    Run agent
+    Agent master-thread. Starting all actors, the buffer and the learner and then waits for its completion
 
+    :param global_is_running_struct:
     :param agent:
     :param n:
     :param log_interval:
-    :return:
+    :return: None
     """
 
     r_buffer = agent[0]
     learner = agent[1]
     actors = agent[2]
-    conf = agent[3]
+    #conf = agent[3]
+    is_running_struct = agent[4]
 
     for actor in actors:
         actor.run.remote()
@@ -183,16 +226,18 @@ def avg_score(agent: list[ReplayBuffer, Learner, list[Actor], dict], n: int, log
     learner.run.remote()
 
     done = False
-    while not done:
+    while not done: #Wait for training steps reach maximum training steps
         time.sleep(log_interval)
-        done = ray.get(r_buffer.log.remote(log_interval))
+        r_buffer.log.remote(log_interval) #print to logfile
+        current_training_steps = ray.get(r_buffer.get_num_training_steps.remote())
+        done = current_training_steps >= config.training_steps
         print()
 
-    # Buffer stores the reward
-    reward = ray.get(r_buffer.get_reward.remote())
+    print("----->DONE<-------")
+    for actor_idx in range(len(actors)):
+        ray.get(is_running_struct[actor_idx].terminate.remote())
 
-    return reward
-
+    ray.get(agent_is_running_struct.terminate.remote())
 
 def mutate(conf: dict, mutation_power=0.002):
     """
@@ -206,6 +251,8 @@ def mutate(conf: dict, mutation_power=0.002):
     no_conf_vals = len(conf)
     keys = list(conf.keys())
     values = list(conf.values())
+
+    print("conf",conf)
 
     conf_vals_to_mutate = np.random.choice([0, 1], size=no_conf_vals-1, p=[.5, .5])
     new_conf = {}

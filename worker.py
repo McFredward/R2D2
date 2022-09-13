@@ -33,8 +33,8 @@ class ReplayBuffer:
                 batch_size=config.batch_size, frame_stack=config.frame_stack):
 
         logging.basicConfig(level=logging.INFO, format='%(message)s')
-        self.logger = logging.getLogger('player_{}'.format(player_idx))
-        self.logger.addHandler(logging.FileHandler('train_player{}.log'.format(player_idx), 'w'))
+        self.logger = logging.getLogger('agent_{}'.format(player_idx))
+        self.logger.addHandler(logging.FileHandler('train_agent{}.log'.format(player_idx), 'w'))
         self.buffer_capacity = buffer_capacity
         self.sequence_len = config.learning_steps
         self.num_sequences = buffer_capacity//self.sequence_len
@@ -222,6 +222,9 @@ class ReplayBuffer:
     def get_reward(self):
         return self.sum_reward
 
+    def get_num_training_steps(self):
+        return self.num_training_steps
+
     def log(self, log_interval):
         self.logger.info(f'buffer size: {np.sum(self.learning_steps)}')
         self.logger.info(f'buffer update speed: {(self.env_steps-self.last_env_steps)/log_interval}/s')
@@ -287,6 +290,7 @@ class Learner:
         self.batched_data = []
 
         self.store_weights()
+
 
     def get_weights(self):
         return self.weights_id
@@ -387,6 +391,8 @@ class Learner:
             # save model
             if self.counter % self.save_interval == 0:
                 torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join(config.save_dir, '{}{}_player{}.pth'.format(self.game_name, self.counter//self.save_interval,self.player_idx)))
+
+
 
     @staticmethod
     def value_rescale(value, eps=1e-2):
@@ -509,10 +515,11 @@ class LocalBuffer:
 
 @ray.remote(num_cpus=1)
 class Actor:
-    def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str ,port : int = 5060, obs_shape: np.ndarray = config.obs_shape,
+    def __init__(self, is_running_struct ,epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str ,port : int = 5060, obs_shape: np.ndarray = config.obs_shape,
                 max_episode_steps: int = config.max_episode_steps, block_length: int = config.block_length,
                 frame_skip: int=config.frame_skip, gamma: float = config.gamma, buffer_burn_in_steps: int = config.burn_in_steps, use_dueling: bool = config.use_dueling):
 
+        self.is_running_struct = is_running_struct
         self.env = create_env(clip_rewards=False,multi_conf=multi_conf,is_host=is_host,port=port, frame_skip=frame_skip)
         self.action_dim = self.env.action_space.n
         self.model = Network(self.env.action_space.n, use_dueling=use_dueling)
@@ -532,13 +539,18 @@ class Actor:
         self.env_steps = 0
         self.done = False
 
+        self.actor_active = True
+
         self.last_action = torch.zeros((1, self.action_dim), dtype=torch.float32)
+
+    def terminate(self):
+        self.actor_active = False
 
     def run(self):
 
         self.reset()
 
-        while True:
+        while ray.get(self.is_running_struct.get_is_running.remote()):
             obs = self.stacked_obs.clone()
             # print(self.last_action)
             action, qval, hidden = self.model.step(obs, self.last_action)
@@ -577,6 +589,8 @@ class Actor:
             if self.counter == 400:
                 self.update_weights()
                 self.counter = 0
+
+        self.env.close()
 
     def update_weights(self):
         '''load latest weights from learner'''
