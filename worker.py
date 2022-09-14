@@ -28,13 +28,13 @@ DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
 
 @ray.remote(num_cpus=1)
 class ReplayBuffer:
-    def __init__(self,player_idx, buffer_capacity=config.buffer_capacity, sequence_len=config.block_length,
+    def __init__(self,player_idx,generation_idx, buffer_capacity=config.buffer_capacity, sequence_len=config.block_length,
                 alpha=config.prio_exponent, beta=config.importance_sampling_exponent,
                 batch_size=config.batch_size, frame_stack=config.frame_stack):
 
         logging.basicConfig(level=logging.INFO, format='%(message)s')
-        self.logger = logging.getLogger('agent_{}'.format(player_idx))
-        self.logger.addHandler(logging.FileHandler('train_agent{}.log'.format(player_idx), 'w'))
+        self.logger = logging.getLogger('agent_{}-{}'.format(generation_idx,player_idx))
+        self.logger.addHandler(logging.FileHandler(os.path.join('logfiles','train_agent{}-{}.log'.format(generation_idx,player_idx)), 'w'))
         self.buffer_capacity = buffer_capacity
         self.sequence_len = config.learning_steps
         self.num_sequences = buffer_capacity//self.sequence_len
@@ -258,13 +258,14 @@ def caculate_mixed_td_errors(td_error, learning_steps):
 
 @ray.remote(num_cpus=1, num_gpus=0.5)
 class Learner:
-    def __init__(self,player_idx : int, buffer: ReplayBuffer, pretrain_file = "", game_name: str = config.game_name, grad_norm: int = config.grad_norm,
+    def __init__(self,player_idx : int,generation_idx, buffer: ReplayBuffer, pretrain_file = "", game_name: str = config.game_name, grad_norm: int = config.grad_norm,
                 lr: float = config.lr, eps:float = config.eps, amp: bool = config.amp,
                 target_net_update_interval: int = config.target_net_update_interval, save_interval: int = config.save_interval,
                 use_double: bool = config.use_double, frame_skip: int=config.frame_skip, use_dueling: bool = config.use_dueling):
 
         self.game_name = game_name
         self.player_idx = player_idx
+        self.generation_idx = generation_idx
         self.online_net = Network(create_env(frame_skip=frame_skip).action_space.n, use_dueling=use_dueling)
         if pretrain_file != "":
             self.online_net.load_state_dict(torch.load(pretrain_file)[0])
@@ -320,7 +321,11 @@ class Learner:
     def train(self):
         scaler = GradScaler()
         obs_idx = torch.LongTensor([i+j for i in range(config.seq_len) for j in range(config.frame_stack)])
-        torch.save((self.online_net.state_dict(), 0, 0), os.path.join(config.save_dir, '{}0_player{}.pth'.format(self.game_name,self.player_idx)))
+        gen_folder = os.path.join(config.save_dir,'generation_{}'.format(self.generation_idx))
+        if not os.path.exists(gen_folder):
+            os.mkdir(gen_folder)
+
+        torch.save((self.online_net.state_dict(), 0, 0), os.path.join(gen_folder, '{}0_player{}.pth'.format(self.game_name,self.player_idx)))
         while self.counter < config.training_steps:
 
             if self.batched_data:
@@ -390,7 +395,7 @@ class Learner:
 
             # save model
             if self.counter % self.save_interval == 0:
-                torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join(config.save_dir, '{}{}_player{}.pth'.format(self.game_name, self.counter//self.save_interval,self.player_idx)))
+                torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join(gen_folder, '{}{}_player{}.pth'.format(self.game_name, self.counter//self.save_interval,self.player_idx)))
 
 
 

@@ -6,6 +6,7 @@ import ray
 from worker import Learner, Actor, ReplayBuffer
 import config
 import logging
+import os
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -39,33 +40,43 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
     multi_conf = ""
 
+    if not os.path.exists('logfiles'):
+        os.mkdir('logfiles')
+    else:
+        logdir_files = os.listdir(os.path.join(os.getcwd(),'logfiles'))
+        if(len(logdir_files) != 0):
+            print("Deleting all existing log files! ARE YOU SURE?")
+            print("Press any key to continue..")
+            input()
+            print(logdir_files)
+            for file in logdir_files:
+                os.remove(os.path.join(os.getcwd(),'logfiles',file))
+
     # Initial setup. Used for the base agent.
     start_config = {"prio_exp": config.prio_exponent, "prio_bias": config.importance_sampling_exponent,
-                    "lr": config.lr, "dueling": config.use_dueling, "epsilon": config.base_eps,
+                    "lr": config.lr, "dueling": config.use_dueling,"double": config.use_double , "epsilon": config.base_eps,
                     "player_idx": 0}
 
     # First agent is the same as start config
-    agents.append(create_agent_from_config(start_config, multi_conf, num_actors))
+    agents.append(create_agent_from_config(start_config, 0, multi_conf, num_actors))
 
     for ii in range(NUM_AGENTS - 1):
-        start_config["player_idx"] = ii + 1
-        agents.append(mutate(start_config))
+        agents.append(mutate(start_config,0))
 
     elite_index = None
     # -- Init done -- start training
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('genetic_logs')
-    logger.addHandler(logging.FileHandler('genetic.log', 'w'))
+    logger.addHandler(logging.FileHandler(os.path.join('logfiles','genetic.log'), 'w'))
 
     for g in range(GENERATIONS):
-        print("-----------------------TEST--------------------")
         logger.info("--- Start Generation No {} ---".format(g))
         for agent in agents: #print current configs in log
             logger.info("Agent {}:\n{}".format(agent[3]['player_idx'],str(agent[3])))
 
-        rewards = run_agents_n_times(agents, 2, num_actors, log_interval)
+        rewards = run_master(agents, 2, num_actors, log_interval)
 
-        logger.info("Generation No. {} finished! Mutating...".format(g))
+        logger.info("Generation No. {} finished!".format(g))
 
         # Top agents (sorted descending)
         sorted_parent_indexes = np.argsort(rewards)[::-1][:TOP_LIMIT]
@@ -73,19 +84,19 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
         top_rewards = []
         for best_parent in sorted_parent_indexes:
             top_rewards.append(rewards[best_parent])
+        #logger.info just takes one string: cant use it like print(.,.,.,.,.)
+        logger.info("Generation "+str(g)+" | Mean rewards: "+str(np.mean(rewards))+" | Mean of top 3: "+str(np.mean(top_rewards[:3])))
+        logger.info("Top "+str(TOP_LIMIT)+" scores "+str(sorted_parent_indexes))
+        logger.info("Rewards for top: "+str(top_rewards))
 
-        logger.info("Generation ", g, " | Mean rewards: ", np.mean(rewards), " | Mean of top 3: ", np.mean(top_rewards[:3]))
-        logger.info("Top ", TOP_LIMIT, " scores", sorted_parent_indexes)
-        logger.info("Rewards for top: ", top_rewards)
-
-        children, elite_index = generate_children([arg[3] for arg in agents], sorted_parent_indexes, elite_index)
+        children, elite_index = generate_children([arg[3] for arg in agents], sorted_parent_indexes,g+1)
         agents = children
 
 
-def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_actors):
+def create_agent_from_config(conf: dict, generation_idx, multi_conf="", num_actors=config.num_actors):
 
-    r_buffer = ReplayBuffer.remote(conf["player_idx"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
-    learner = Learner.remote(conf["player_idx"], buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"])
+    r_buffer = ReplayBuffer.remote(conf["player_idx"],generation_idx, alpha=conf["prio_exp"], beta=conf["prio_bias"])
+    learner = Learner.remote(conf["player_idx"],generation_idx, buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"])
 
     actors_is_running = [is_running_struct.remote() for _ in range(num_actors)]
 
@@ -102,7 +113,7 @@ def create_agent_from_config(conf: dict, multi_conf="", num_actors=config.num_ac
     return [r_buffer, learner, actors, conf,actors_is_running]
 
 
-def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index):
+def generate_children(agent_confs: list[dict], parent_indexes: list, generation_idx):
     # Generate children from the best performing agents
 
     children_agents = []
@@ -112,7 +123,7 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index
         # Take a random index of a parent
         selected_agent_index = parent_indexes[np.random.randint(len(parent_indexes))]
         # Mutate the config
-        children_agents.append(mutate(agent_confs[selected_agent_index]))
+        children_agents.append(mutate(agent_confs[selected_agent_index],generation_idx))
 
     # Add one elite
     # elite_child = add_elite(agent_confs, parent_indexes, elite_index)
@@ -121,7 +132,7 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, elite_index
 
     # Add best of top to children
 
-    children_agents.append(create_agent_from_config(agent_confs[parent_indexes[0]]))
+    children_agents.append(create_agent_from_config(agent_confs[parent_indexes[0]],generation_idx))
     elite_index = parent_indexes[0]
 
     return children_agents, elite_index
@@ -159,9 +170,9 @@ def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=
     return child_agent
 """
 
-def run_agents_n_times(agents, n: int, num_actors: int, log_interval): #agents: list[list[ReplayBuffer, Learner, list[Actor], dict, is_running:_struct]]
+def run_master(agents, n: int, num_actors: int, log_interval): #agents: list[list[ReplayBuffer, Learner, list[Actor], dict, is_running:_struct]]
     """
-    Run the agents one by one
+    Start all masterthreads of all agents, and waits for their completion
 
     :param agents:
     :param n:
@@ -184,8 +195,7 @@ def run_agents_n_times(agents, n: int, num_actors: int, log_interval): #agents: 
         for agent_idx in range(len(agents)):
             # Only keeps beeing False if all "is_runnning" from all actors in False
             is_running = ray.get(agents_is_running_struct_lst[agent_idx].get_is_running.remote())
-            print("still_running = " + str(still_running) + " or " + str(is_running) + " = " + str(
-                still_running or is_running))
+            #print("still_running = " + str(still_running) + " or " + str(is_running) + " = " + str(still_running or is_running))
             still_running = still_running or is_running
 
 
@@ -239,7 +249,7 @@ def run_agent(agent_is_running_struct,agent, n: int, log_interval): #list[Replay
 
     ray.get(agent_is_running_struct.terminate.remote())
 
-def mutate(conf: dict, mutation_power=0.002):
+def mutate(conf: dict, generation_idx, mutation_power=0.002):
     """
     Mutate the config and create a new Agent based on the mutated config
 
@@ -257,15 +267,14 @@ def mutate(conf: dict, mutation_power=0.002):
     conf_vals_to_mutate = np.random.choice([0, 1], size=no_conf_vals-1, p=[.5, .5])
     new_conf = {}
     for ii in range(no_conf_vals):
-        if ii == no_conf_vals-1:
-            # Last entry is player_idx
-            new_conf[keys[ii]] = int(conf[keys[ii]] * 100)
+        if ii == no_conf_vals-1: # Last entry is player_idx
+            new_conf[keys[ii]] = int(conf[keys[ii]] + 1)
         elif conf_vals_to_mutate[ii]:
             new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
         else:
             new_conf[keys[ii]] = values[ii]
 
-    return create_agent_from_config(new_conf)
+    return create_agent_from_config(new_conf,generation_idx)
 
 
 
