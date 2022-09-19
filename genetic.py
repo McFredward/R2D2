@@ -32,7 +32,7 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
     ray.init()
 
-    NUM_AGENTS = 2
+    NUM_AGENTS = 3
     TOP_LIMIT = 1
     GENERATIONS = 10
 
@@ -61,7 +61,9 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
     agents.append(create_agent_from_config(start_config, 0, multi_conf, num_actors))
 
     for ii in range(NUM_AGENTS - 1):
-        agents.append(mutate(start_config,0))
+        start_config_copy = start_config.copy()
+        start_config_copy['player_idx'] = ii
+        agents.append(mutate(start_config_copy,0))
 
     elite_index = None
     # -- Init done -- start training
