@@ -32,7 +32,7 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
     ray.init()
 
-    NUM_AGENTS = 3
+    NUM_AGENTS = 2
     TOP_LIMIT = 1
     GENERATIONS = 10
 
@@ -62,7 +62,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
     for ii in range(NUM_AGENTS - 1):
         start_config_copy = start_config.copy()
-        start_config_copy['player_idx'] = ii
+        start_config_copy['player_idx'] = ii+1
         agents.append(mutate(start_config_copy,0))
 
     elite_index = None
@@ -125,7 +125,9 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, generation_
         # Take a random index of a parent
         selected_agent_index = parent_indexes[np.random.randint(len(parent_indexes))]
         # Mutate the config
-        children_agents.append(mutate(agent_confs[selected_agent_index],generation_idx))
+        agent_conf = agent_confs[selected_agent_index].copy()
+        agent_conf['player_idx'] = i+1
+        children_agents.append(mutate(agent_conf,generation_idx))
 
     # Add one elite
     # elite_child = add_elite(agent_confs, parent_indexes, elite_index)
@@ -133,8 +135,9 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, generation_
     # elite_index=len(children_agents)-1 #it is the last one
 
     # Add best of top to children
-
-    children_agents.append(create_agent_from_config(agent_confs[parent_indexes[0]],generation_idx))
+    agent_conf = agent_confs[parent_indexes[0]].copy()
+    agent_conf['player_idx'] = 0
+    children_agents.append(create_agent_from_config(agent_conf,generation_idx))
     elite_index = parent_indexes[0]
 
     return children_agents, elite_index
@@ -270,7 +273,7 @@ def mutate(conf: dict, generation_idx, mutation_power=0.002):
     new_conf = {}
     for ii in range(no_conf_vals):
         if ii == no_conf_vals-1: # Last entry is player_idx
-            new_conf[keys[ii]] = int(conf[keys[ii]] + 1)
+            new_conf[keys[ii]] = int(conf[keys[ii]])
         elif conf_vals_to_mutate[ii]:
             new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
         else:
