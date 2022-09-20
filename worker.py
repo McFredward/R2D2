@@ -28,13 +28,13 @@ DEFAULT_NP_FLOAT = np.float16 if config.amp else np.float32
 
 @ray.remote(num_cpus=1)
 class ReplayBuffer:
-    def __init__(self,player_idx, buffer_capacity=config.buffer_capacity, sequence_len=config.block_length,
+    def __init__(self,player_idx,generation_idx, buffer_capacity=config.buffer_capacity, sequence_len=config.block_length,
                 alpha=config.prio_exponent, beta=config.importance_sampling_exponent,
                 batch_size=config.batch_size, frame_stack=config.frame_stack):
 
         logging.basicConfig(level=logging.INFO, format='%(message)s')
-        self.logger = logging.getLogger('player_{}'.format(player_idx))
-        self.logger.addHandler(logging.FileHandler('train_player{}.log'.format(player_idx), 'w'))
+        self.logger = logging.getLogger('agent_{}-{}'.format(generation_idx,player_idx))
+        self.logger.addHandler(logging.FileHandler(os.path.join('logfiles','train_agent{}-{}.log'.format(generation_idx,player_idx)), 'w'))
         self.buffer_capacity = buffer_capacity
         self.sequence_len = config.learning_steps
         self.num_sequences = buffer_capacity//self.sequence_len
@@ -224,6 +224,9 @@ class ReplayBuffer:
     def get_reward(self):
         return self.sum_reward
 
+    def get_num_training_steps(self):
+        return self.num_training_steps
+
     def log(self, log_interval):
         self.logger.info(f'buffer size: {np.sum(self.learning_steps)}')
         self.logger.info(f'buffer update speed: {(self.env_steps-self.last_env_steps)/log_interval}/s')
@@ -262,13 +265,14 @@ def caculate_mixed_td_errors(td_error, learning_steps):
 
 @ray.remote(num_cpus=1, num_gpus=0.5)
 class Learner:
-    def __init__(self,player_idx : int, buffer: ReplayBuffer, pretrain_file = "", game_name: str = config.game_name, grad_norm: int = config.grad_norm,
+    def __init__(self,player_idx : int,generation_idx, buffer: ReplayBuffer, pretrain_file = "", game_name: str = config.game_name, grad_norm: int = config.grad_norm,
                 lr: float = config.lr, eps:float = config.eps, amp: bool = config.amp,
                 target_net_update_interval: int = config.target_net_update_interval, save_interval: int = config.save_interval,
                 use_double: bool = config.use_double, frame_skip: int=config.frame_skip, use_dueling: bool = config.use_dueling):
 
         self.game_name = game_name
         self.player_idx = player_idx
+        self.generation_idx = generation_idx
         self.online_net = Network(create_env(frame_skip=frame_skip).action_space.n, use_dueling=use_dueling)
         if pretrain_file != "":
             self.online_net.load_state_dict(torch.load(pretrain_file)[0])
@@ -294,6 +298,7 @@ class Learner:
         self.batched_data = []
 
         self.store_weights()
+
 
     def get_weights(self):
         return self.weights_id
@@ -323,7 +328,11 @@ class Learner:
     def train(self):
         scaler = GradScaler()
         obs_idx = torch.LongTensor([i+j for i in range(config.seq_len) for j in range(config.frame_stack)])
-        torch.save((self.online_net.state_dict(), 0, 0), os.path.join(config.save_dir, '{}0_player{}.pth'.format(self.game_name,self.player_idx)))
+        gen_folder = os.path.join(config.save_dir,'generation_{}'.format(self.generation_idx))
+        if not os.path.exists(gen_folder):
+            os.mkdir(gen_folder)
+
+        torch.save((self.online_net.state_dict(), 0, 0), os.path.join(gen_folder, '{}0_player{}.pth'.format(self.game_name,self.player_idx)))
         while self.counter < config.training_steps:
 
             if self.batched_data:
@@ -393,7 +402,9 @@ class Learner:
 
             # save model
             if self.counter % self.save_interval == 0:
-                torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join(config.save_dir, '{}{}_player{}.pth'.format(self.game_name, self.counter//self.save_interval,self.player_idx)))
+                torch.save((self.online_net.state_dict(), self.counter, env_steps), os.path.join(gen_folder, '{}{}_player{}.pth'.format(self.game_name, self.counter//self.save_interval,self.player_idx)))
+
+
 
     @staticmethod
     def value_rescale(value, eps=1e-2):
@@ -516,10 +527,11 @@ class LocalBuffer:
 
 @ray.remote(num_cpus=1)
 class Actor:
-    def __init__(self, epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str ,port : int = 5060, obs_shape: np.ndarray = config.obs_shape,
+    def __init__(self, is_running_struct ,epsilon: float, learner: Learner, buffer: ReplayBuffer, multi_conf : str, is_host : bool, pretrain_file : str ,port : int = 5060, obs_shape: np.ndarray = config.obs_shape,
                 max_episode_steps: int = config.max_episode_steps, block_length: int = config.block_length,
                 frame_skip: int=config.frame_skip, gamma: float = config.gamma, buffer_burn_in_steps: int = config.burn_in_steps, use_dueling: bool = config.use_dueling):
 
+        self.is_running_struct = is_running_struct
         self.env = create_env(clip_rewards=False,multi_conf=multi_conf,is_host=is_host,port=port, frame_skip=frame_skip)
         self.action_dim = self.env.action_space.n
         self.model = Network(self.env.action_space.n, use_dueling=use_dueling)
@@ -539,13 +551,18 @@ class Actor:
         self.env_steps = 0
         self.done = False
 
+        self.actor_active = True
+
         self.last_action = torch.zeros((1, self.action_dim), dtype=torch.float32)
+
+    def terminate(self):
+        self.actor_active = False
 
     def run(self):
 
         self.reset()
 
-        while True:
+        while ray.get(self.is_running_struct.get_is_running.remote()):
             obs = self.stacked_obs.clone()
             # print(self.last_action)
             action, qval, hidden = self.model.step(obs, self.last_action)
@@ -584,6 +601,8 @@ class Actor:
             if self.counter == 400:
                 self.update_weights()
                 self.counter = 0
+
+        self.env.close()
 
     def update_weights(self):
         '''load latest weights from learner'''

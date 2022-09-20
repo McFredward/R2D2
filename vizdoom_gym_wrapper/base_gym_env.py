@@ -300,3 +300,4 @@ class VizdoomEnv(gym.Env):
         if self.window_surface:
             pygame.quit()
             self.isopen = False
+        self.game.close()
