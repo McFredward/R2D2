@@ -253,7 +253,7 @@ def run_agent(agent_is_running_struct,agent, n: int, log_interval): #list[Replay
         ray.get(is_running_struct[actor_idx].terminate.remote())
 
     ray.get(agent_is_running_struct.terminate.remote())
-    
+
 
 def mutate(conf: dict, generation_idx, mutation_power=0.002):
     """
