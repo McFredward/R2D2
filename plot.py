@@ -9,6 +9,8 @@ parser.add_argument("--file_path", dest='file', default=os.getcwd(),type=str)
 parser.add_argument("--show_all", action='store_true')
 parser.add_argument("--max_time", dest='max_time', default=-1,type=int)
 parser.add_argument("--loss_interpolation", action='store_true')
+parser.add_argument("--title", dest='title', default="",type=str)
+parser.add_argument("--highlight", dest='highlight', default=None,type=int)
 args = parser.parse_args()
 
 if os.path.isfile(args.file) and args.file.split('.')[-1] == 'log':
@@ -17,6 +19,8 @@ else:
     lst = [os.path.join(args.file, filename) for filename in os.listdir(args.file) if os.path.isfile(os.path.join(args.file, filename)) and filename.split('.')[-1] == 'log']
 
 fig, axes = plt.subplots(nrows=int(np.ceil(len(lst)/2)), ncols=int(np.ceil(len(lst)/2)),figsize=(200, 20),sharex=True,sharey=True)
+if args.title != "":
+    fig.suptitle(args.title.replace('_',' '))
 previous_loss_axis = None
 for f, idx in zip(lst,range(len(lst))):
     with open(f) as f:
@@ -65,10 +69,13 @@ for f, idx in zip(lst,range(len(lst))):
             x_inter_loss = np.linspace(min(x_loss), max(x_loss), 120)
             loss_interpolated = interpolation_loss(x_inter_loss)
 
+
         #fig, ax1 = plt.subplots(1, 1, figsize=(8,4))
         if type(axes) is np.ndarray:
             ax1 = axes[idx//2][idx%2]
-            ax1.set_title('Player {}'.format(idx + 1))
+            ax1.set_title('Agent {}'.format(idx + 1))
+            if args.highlight == idx:
+                ax1.set_facecolor('lightyellow')
         else:
             ax1 = axes
         ax1.plot(x_reward,rewards,color='tab:blue',alpha=0.3)
