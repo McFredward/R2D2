@@ -97,14 +97,14 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
 
 def create_agent_from_config(conf: dict, generation_idx, multi_conf="", num_actors=config.num_actors):
 
-    r_buffer = ReplayBuffer.remote(conf["player_idx"], generation_idx, batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
-    learner = Learner.remote(conf["player_idx"], generation_idx, buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"], use_double=conf["double"])
+    r_buffer = ReplayBuffer.remote(conf["player_idx"], generation_idx,seq_len=conf["burn in"]+config.learning_steps+config.forward_steps, batch_size=conf["batch size"], alpha=conf["prio_exp"], beta=conf["prio_bias"])
+    learner = Learner.remote(conf["player_idx"], generation_idx, burn_in_steps=conf["burn in"], batch_size=conf["batch size"],buffer=r_buffer, lr=conf["lr"], use_dueling=conf["dueling"], use_double=conf["double"])
 
     actors_is_running = [is_running_struct.remote() for _ in range(num_actors)]
 
     if config.multiplayer:
         base_host_actor = Actor.remote(actors_is_running[0], get_epsilon(0, conf["epsilon"]), learner, r_buffer, multi_conf, True, config.pretrain,
-                                       use_dueling=conf["dueling"], use_double=conf["double"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
+                                       use_dueling=conf["dueling"], frame_skip=conf["frame skip"], gamma=conf["gamma"],
                                        buffer_burn_in_steps=conf["burn in"])
         actors = [base_host_actor] + [Actor.remote(actors_is_running[i], get_epsilon(i, conf["epsilon"]), learner, r_buffer,
                                                    "127.0.0.1:5029", False, config.pretrain,
@@ -113,7 +113,7 @@ def create_agent_from_config(conf: dict, generation_idx, multi_conf="", num_acto
                                                    use_dueling=conf["dueling"]) for i in range(1,num_actors)]
     else:
         actors = [Actor.remote(actors_is_running[i], get_epsilon(i, conf["epsilon"]), learner, r_buffer, multi_conf, False,
-                               config.pretrain, use_dueling=conf["dueling"], use_double=conf["double"], frame_skip=conf["frame skip"],
+                               config.pretrain, use_dueling=conf["dueling"], frame_skip=conf["frame skip"],
                                gamma=conf["gamma"], buffer_burn_in_steps=conf["burn in"],) for i in range(num_actors)]
 
     return [r_buffer, learner, actors, conf, actors_is_running]
@@ -259,12 +259,12 @@ def run_agent(agent_is_running_struct,agent, n: int, log_interval): #list[Replay
     ray.get(agent_is_running_struct.terminate.remote())
 
 
-def mutate(conf: dict, generation_idx, mutation_power=0.002):
+def mutate(conf: dict, generation_idx, mutation_power_float=0.002,mutation_power_int=40):
     """
     Mutate the config and create a new Agent based on the mutated config
 
     :param conf: The old config (the mutation will be performed on)
-    :param mutation_power: the intensity of mutation for every value
+    :param mutation_power_float: the intensity of mutation for every value
     :return: an agent consisting of [buffer, learner, actors, conf]
     """
 
@@ -280,7 +280,16 @@ def mutate(conf: dict, generation_idx, mutation_power=0.002):
         if ii == no_conf_vals-1: # Last entry is player_idx
             new_conf[keys[ii]] = int(conf[keys[ii]])
         elif conf_vals_to_mutate[ii]:
-            new_conf[keys[ii]] = mutate_value(values[ii], mutation_power)
+            print("test",keys[ii])
+            if keys[ii] == 'batch size': #must be a potency of two
+                exponent = mutate_value(int(np.log2(values[ii])), mutation_power_float, mutation_power_int=1)
+                new_conf[keys[ii]] = 2**exponent
+            elif keys[ii] == 'frame skip':
+                new_conf[keys[ii]] = mutate_value(values[ii], mutation_power_float, mutation_power_int=2)
+            elif keys[ii] == 'burn in':
+                new_conf[keys[ii]] = mutate_value(values[ii], mutation_power_float,mutation_power_int=5)
+            else:
+                new_conf[keys[ii]] = mutate_value(values[ii], mutation_power_float, mutation_power_int)
         else:
             new_conf[keys[ii]] = values[ii]
 
@@ -288,7 +297,7 @@ def mutate(conf: dict, generation_idx, mutation_power=0.002):
 
 
 
-def mutate_value(old_value, mutation_power):
+def mutate_value(old_value, mutation_power_float,mutation_power_int):
     """
     Mutate a single value
 
@@ -300,9 +309,9 @@ def mutate_value(old_value, mutation_power):
     if type(old_value) == bool:
         new_value = not(old_value)
     elif type(old_value) == int:
-        new_value = abs(int(np.round(old_value + np.random.normal(0, 1) * mutation_power)))
+        new_value = abs(int(np.round(old_value + np.random.normal(0, 1) * mutation_power_int)))
     elif type(old_value) == float:
-        new_value = abs(old_value + np.random.normal(0, 1) * mutation_power)
+        new_value = abs(old_value + np.random.normal(0, 1) * mutation_power_float)
     elif type(old_value) == tuple or type(old_value) == list:
         new_value = (mutate_value(old_value[ii]) for ii in range(len(old_value)))
     else:
