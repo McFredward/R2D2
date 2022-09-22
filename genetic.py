@@ -283,9 +283,14 @@ def mutate(conf: dict, generation_idx, mutation_power_float=0.002,mutation_power
             print("test",keys[ii])
             if keys[ii] == 'batch size': #must be a potency of two
                 exponent = mutate_value(int(np.log2(values[ii])), mutation_power_float, mutation_power_int=1)
+                if exponent == 0:
+                    exponent == 1
                 new_conf[keys[ii]] = 2**exponent
             elif keys[ii] == 'frame skip':
-                new_conf[keys[ii]] = mutate_value(values[ii], mutation_power_float, mutation_power_int=2)
+                value = mutate_value(values[ii], mutation_power_float, mutation_power_int=2)
+                if value == 0:
+                    value == 1
+                new_conf[keys[ii]] = value
             elif keys[ii] == 'burn in':
                 new_conf[keys[ii]] = mutate_value(values[ii], mutation_power_float,mutation_power_int=5)
             else:
