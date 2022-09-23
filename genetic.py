@@ -32,9 +32,11 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
     ray.init()
 
-    NUM_AGENTS = 2
-    TOP_LIMIT = 1
+    NUM_AGENTS = 4
+    TOP_LIMIT = 2
     GENERATIONS = 10
+
+    do_crossover = config.do_crossover and (TOP_LIMIT > 1)
 
     agents = []
 
@@ -91,7 +93,7 @@ def train(num_actors=config.num_actors, log_interval=config.log_interval):
         logger.info("Top "+str(TOP_LIMIT)+" scores "+str(sorted_parent_indexes))
         logger.info("Rewards for top: "+str(top_rewards))
 
-        children, elite_index = generate_children([arg[3] for arg in agents], sorted_parent_indexes,g+1)
+        children, elite_index = generate_children([arg[3] for arg in agents], sorted_parent_indexes,g+1, do_crossover)
         agents = children
 
 
@@ -119,24 +121,34 @@ def create_agent_from_config(conf: dict, generation_idx, multi_conf="", num_acto
     return [r_buffer, learner, actors, conf, actors_is_running]
 
 
-def generate_children(agent_confs: list[dict], parent_indexes: list, generation_idx):
+def generate_children(agent_confs: list[dict], parent_indexes: list, generation_idx, do_crossover: bool = False):
     # Generate children from the best performing agents
 
     children_agents = []
+    no_agents = len(agent_confs)
 
-    # Fill not-top agents with random mutations of top performing agents
-    for i in range(len(agent_confs)-1):
-        # Take a random index of a parent
-        selected_agent_index = parent_indexes[np.random.randint(len(parent_indexes))]
-        # Mutate the config
-        agent_conf = agent_confs[selected_agent_index].copy()
-        agent_conf['player_idx'] = i+1
-        children_agents.append(mutate(agent_conf,generation_idx))
-
-    # Add one elite
-    # elite_child = add_elite(agent_confs, parent_indexes, elite_index)
-    # children_agents.append(elite_child)
-    # elite_index=len(children_agents)-1 #it is the last one
+    # Fill not-top agents with random mutations or crossovers of top performing agents
+    for i in range(no_agents-1):
+        if (np.random.randint(0, 2)) or (i == no_agents-2) or not(do_crossover):
+            # Mutate a single agent
+            # Take a random index of a parent
+            selected_agent_index = parent_indexes[np.random.randint(len(parent_indexes))]
+            # Mutate the config
+            agent_conf = agent_confs[selected_agent_index].copy()
+            agent_conf['player_idx'] = i+1
+            children_agents.append(mutate(agent_conf, generation_idx))
+        else: #  Crossover
+            sel_idxs = np.random.choice(parent_indexes, 2, replace=False)
+            # Get configs
+            c1 = agent_confs[sel_idxs[0]].copy()
+            c2 = agent_confs[sel_idxs[1]].copy()
+            c1['player_idx'] = i+1
+            c2['player_idx'] = i+2
+            # Crossover
+            a1, a2 = crossover(c1, c2, generation_idx)
+            children_agents.append(a1)
+            children_agents.append(a2)
+            i += 1
 
     # Add best of top to children
     agent_conf = agent_confs[parent_indexes[0]].copy()
@@ -146,38 +158,6 @@ def generate_children(agent_confs: list[dict], parent_indexes: list, generation_
 
     return children_agents, elite_index
 
-"""
-def add_elite(agent_confs: list[dict], sorted_parent_indexes: list, elite_index=None, only_consider_top_n: int=1):
-    # Select the elite of agents (best performing)
-
-    # Best of the best
-    candidate_elite_index = sorted_parent_indexes[:only_consider_top_n]
-
-    # Previous elite is also considered
-    if elite_index is not None:
-        candidate_elite_index = np.append(candidate_elite_index, [elite_index])
-
-    top_score = None
-    top_elite_index = None
-
-    # Compare new elite(s) and previous elite
-    for i in candidate_elite_index:
-        agent_confs[i]["player_idx"] = int(agent_confs[i]["player_idx"] * 10 + i)
-        score = run_agent(create_agent_from_config(agent_confs[i]), n=5)
-        print("Score for elite cadidiate i ", i, " is ", score)
-
-        if(top_score is None):
-            top_score = score
-            top_elite_index = i
-        elif(score > top_score):
-            top_score = score
-            top_elite_index = i
-
-    print("Elite selected with index ", top_elite_index, " and score", top_score)
-
-    child_agent = create_agent_from_config(agent_confs[top_elite_index])
-    return child_agent
-"""
 
 def run_master(agents, n: int, num_actors: int, log_interval): #agents: list[list[ReplayBuffer, Learner, list[Actor], dict, is_running:_struct]]
     """
@@ -272,25 +252,18 @@ def mutate(conf: dict, generation_idx, mutation_power_float=0.002,mutation_power
     keys = list(conf.keys())
     values = list(conf.values())
 
-    print("conf",conf)
-
     conf_vals_to_mutate = np.random.choice([0, 1], size=no_conf_vals-1, p=[.5, .5])
     new_conf = {}
     for ii in range(no_conf_vals):
         if ii == no_conf_vals-1: # Last entry is player_idx
             new_conf[keys[ii]] = int(conf[keys[ii]])
         elif conf_vals_to_mutate[ii]:
-            print("test",keys[ii])
             if keys[ii] == 'batch size': #must be a potency of two
                 exponent = mutate_value(int(np.log2(values[ii])), mutation_power_float, mutation_power_int=1)
-                if exponent == 0:
-                    exponent == 1
-                new_conf[keys[ii]] = 2**exponent
+                new_conf[keys[ii]] = 2**exponent if exponent > 0 else 2
             elif keys[ii] == 'frame skip':
                 value = mutate_value(values[ii], mutation_power_float, mutation_power_int=2)
-                if value == 0:
-                    value == 1
-                new_conf[keys[ii]] = value
+                new_conf[keys[ii]] = value if value > 0 else 1
             elif keys[ii] == 'burn in':
                 new_conf[keys[ii]] = mutate_value(values[ii], mutation_power_float,mutation_power_int=5)
             else:
@@ -298,8 +271,7 @@ def mutate(conf: dict, generation_idx, mutation_power_float=0.002,mutation_power
         else:
             new_conf[keys[ii]] = values[ii]
 
-    return create_agent_from_config(new_conf,generation_idx)
-
+    return create_agent_from_config(new_conf, generation_idx)
 
 
 def mutate_value(old_value, mutation_power_float,mutation_power_int):
@@ -323,6 +295,27 @@ def mutate_value(old_value, mutation_power_float,mutation_power_int):
         raise TypeError("Unknown type for mutation")
 
     return new_value
+
+
+def crossover(agent_conf1: dict, agent_conf2: dict, generation_idx):
+    keys = list(agent_conf1.keys())
+    values1 = list(agent_conf1.values())
+    values2 = list(agent_conf2.values())
+
+    new_conf1 = {}
+    new_conf2 = {}
+    for idx, (key, v1, v2) in enumerate(zip(keys, values1, values2)):
+        if np.random.randint(0, 2): #  Uniform
+            new_conf1[key] = v2
+            new_conf2[key] = v1
+        else:
+            new_conf1[key] = v1
+            new_conf2[key] = v2
+
+    agent1 = create_agent_from_config(new_conf1, generation_idx)
+    agent2 = create_agent_from_config(new_conf2, generation_idx)
+
+    return agent1, agent2
 
 
 if __name__ == '__main__':

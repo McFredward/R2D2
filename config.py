@@ -52,6 +52,9 @@ use_double = True
 hidden_dim = 512 #<-- GEN
 cnn_out_dim = 1024 #<-- GEN
 
+# Genetic
+do_crossover = False
+
 render = True
 save_plot = True
 test_epsilon = 0.01
