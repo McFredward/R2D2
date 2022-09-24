@@ -2,7 +2,7 @@ CUDA_VISIBLE_DEVICES = "0,3"
 game_name = 'CartPole'
 env_type = '-v1'
 pretrain = "" #name of the pretrain file in the root. No pretrain if empty string
-save_dir = '/data/lissek/R2D2/genetic/cartpole-1/'
+save_dir = '/data/lissek/R2D2/Genetic_Cartpole/run2/'
 #save_dir = 'models/cartpole/'
 frame_stack = 4
 obs_shape = (frame_stack, 84, 84) #same as VizDOOM <-- GEN
@@ -22,7 +22,7 @@ gamma = 0.997 #Gamme in goal Gleichung | #TODO: Einlesen | GEN?!
 prio_exponent = 0.9 #0.9 #How much Prioritization should be used (alpha) | 0 for no Prioritized replay <-- GEN
 importance_sampling_exponent = 0.6 #Bias regularization because of Prioritization | 0.6 <--GEN
 
-training_steps = 100000
+training_steps = 2500
 buffer_capacity = 100000 #<-- GEN
 max_episode_steps = 27000
 actor_update_interval = 40 #<-- Vielleicht GEN
@@ -30,7 +30,7 @@ block_length = 40  # cut one episode to numbers of blocks to improve the buffer 
 
 amp = False # mixed precision training
 
-num_actors = 2 #10 # <-- NOT GEN
+num_actors = 5 #10 # <-- NOT GEN
 base_eps = 0.4 #epsilon-greedy-strategy | TODO: Mal angucken ob sinnvoll als GEN| Fix oder angepasst?
 alpha = 7 #for calculating a starting epsilon for each actor
 log_interval = 20
@@ -55,6 +55,6 @@ cnn_out_dim = 1024 #<-- GEN
 # Genetic
 do_crossover = False
 
-render = True
+render = False
 save_plot = True
 test_epsilon = 0.01

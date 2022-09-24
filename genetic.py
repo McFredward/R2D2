@@ -32,9 +32,9 @@ def get_epsilon(actor_id: int, base_eps: float = config.base_eps, alpha: float =
 def train(num_actors=config.num_actors, log_interval=config.log_interval):
     ray.init()
 
-    NUM_AGENTS = 4
-    TOP_LIMIT = 2
-    GENERATIONS = 10
+    NUM_AGENTS = 8
+    TOP_LIMIT = 3
+    GENERATIONS = 100
 
     do_crossover = config.do_crossover and (TOP_LIMIT > 1)
 
