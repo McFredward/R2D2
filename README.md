@@ -24,6 +24,13 @@ Then run:
 ```
 python3 train.py
 ```
+
+For the genetic training run:
+```
+python3 genetic.py
+```
+You can adjust the genetic training in the genetic.py and set the starting configuration in the dictionary `start_config`. By default the values are taken from the config.py file.
+
 ## Testing
 ```
 python3 test.py
